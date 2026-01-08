@@ -48,3 +48,17 @@ npm-debug.log
 # Distribution
 dist/
 release/
+
+# Kotlin
+.kotlin/
+*.log
+*.ctxt
+.mtj.tmp/
+*.war
+*.nar
+*.ear
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
