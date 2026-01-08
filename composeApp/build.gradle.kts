@@ -80,8 +80,36 @@ compose.desktop {
         mainClass = "com.organize.photos.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "organize-photos"
+            packageName = "OrganizePhotos"
             packageVersion = "1.0.0"
+            description = "Photo organizer with EXIF metadata search"
+            vendor = "kkyama77"
+            copyright = "© 2026 kkyama77. Licensed under MIT."
+            
+            // JRE 同梱設定
+            modules("java.sql", "java.desktop", "java.prefs", "jdk.unsupported")
+            
+            // Windows 設定
+            windows {
+                menuGroup = "Organize Photos"
+                perUserInstall = true
+                dirChooser = true
+                shortcut = true
+                upgradeUuid = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+            }
+            
+            // macOS 設定
+            macOS {
+                bundleID = "com.kkyama77.organizephotos"
+            }
+            
+            // Linux 設定
+            linux {
+                packageName = "organize-photos"
+                debMaintainer = "kkyama77@example.com"
+                menuGroup = "Graphics"
+                appCategory = "Graphics"
+            }
         }
     }
 }
