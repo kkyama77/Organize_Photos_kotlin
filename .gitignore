@@ -1,0 +1,50 @@
+# Gradle
+.gradle/
+build/
+*.jar
+*.zip
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compose/Native
+.native/
+
+# Android
+.android/
+local.properties
+
+# キャッシュ
+.kotlinc/
+composeApp/.gradle/
+composeApp/build/
+
+# Gradle wrapper
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# IntelliJ
+out/
+*.class
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.asc
+
+# Node
+node_modules/
+npm-debug.log
+
+# Distribution
+dist/
+release/
