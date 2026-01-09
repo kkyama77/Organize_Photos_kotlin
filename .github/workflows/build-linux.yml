@@ -20,13 +20,14 @@ jobs:
       with: 
         distribution: 'temurin'
         java-version: '17'
-        cache: 'gradle'
     
-    - name: Gradleへの実行権限付与
-      run:  chmod +x ./gradlew
+    - name: Gradle のセットアップ
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.7'
     
-    - name: Linuxバイナリのビルド (. deb)
-      run: ./gradlew packageDeb
+    - name: Linuxバイナリのビルド (.deb)
+      run: gradle packageDeb --no-daemon
     
     - name:  ビルド成果物の確認
       run:  |
@@ -41,7 +42,7 @@ jobs:
         if-no-files-found:  error
     
     - name:  AppImageのビルド (オプション)
-      run: ./gradlew packageUberJarForCurrentOS
+      run: gradle packageUberJarForCurrentOS --no-daemon
       continue-on-error: true
     
     - name: UberJarのアップロード
