@@ -1,0 +1,52 @@
+name: Build Linux Binary
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:   # 手動実行を可能にする
+
+jobs: 
+  build-linux:
+    runs-on:  ubuntu-latest
+    
+    steps:
+    - name: リポジトリのチェックアウト
+      uses: actions/checkout@v4
+    
+    - name: JDK 17 のセットアップ
+      uses: actions/setup-java@v4
+      with: 
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+    
+    - name: Gradleへの実行権限付与
+      run:  chmod +x ./gradlew
+    
+    - name: Linuxバイナリのビルド (. deb)
+      run: ./gradlew packageDeb
+    
+    - name:  ビルド成果物の確認
+      run:  |
+        echo "=== ビルドされたファイル一覧 ==="
+        find composeApp/build/compose/binaries -type f
+    
+    - name: . debパッケージのアップロード
+      uses: actions/upload-artifact@v4
+      with:
+        name: organize-photos-linux-deb
+        path: composeApp/build/compose/binaries/main/deb/*. deb
+        if-no-files-found:  error
+    
+    - name:  AppImageのビルド (オプション)
+      run: ./gradlew packageUberJarForCurrentOS
+      continue-on-error: true
+    
+    - name: UberJarのアップロード
+      uses:  actions/upload-artifact@v4
+      with:
+        name:  organize-photos-linux-jar
+        path: composeApp/build/compose/jars/*.jar
+      continue-on-error: true
