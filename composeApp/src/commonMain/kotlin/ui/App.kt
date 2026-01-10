@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -51,6 +52,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.dp
 import com.organize.photos.logic.FakePhotoScanner
+import com.organize.photos.logic.AdvancedSearchConfig
+import com.organize.photos.logic.AdvancedSearchEngine
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ScanFilters
 import com.organize.photos.logic.SearchService
@@ -93,7 +96,10 @@ fun PhotoGridScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedPhotoForView by remember { mutableStateOf<PhotoItem?>(null) }
+    var useAdvancedSearch by rememberSaveable { mutableStateOf(false) }
+    var advancedSearchConfig by remember { mutableStateOf(AdvancedSearchConfig()) }
     val searchService = remember { SearchService() }
+    val advancedSearchEngine = remember { AdvancedSearchEngine() }
     val thumbnailCache = remember { ThumbnailCache(maxItems = 256) }
     val scope = rememberCoroutineScope()
 
@@ -110,8 +116,14 @@ fun PhotoGridScreen(
         }
     }
 
-    val filtered = remember(query, selectedExtensions, photos, searchMode) {
-        searchService.filter(photos, query, selectedExtensions, dateRange = null, searchMode = searchMode)
+    val filtered = remember(query, selectedExtensions, photos, searchMode, useAdvancedSearch, advancedSearchConfig) {
+        var result = if (useAdvancedSearch) {
+            advancedSearchEngine.filter(photos, advancedSearchConfig)
+        } else {
+            searchService.filter(photos, query, selectedExtensions, dateRange = null, searchMode = searchMode)
+        }
+        // 拡張子フィルタは常に適用
+        result.filter { selectedExtensions.isEmpty() || selectedExtensions.contains(it.extension.lowercase()) }
     }
 
     Scaffold(
@@ -162,6 +174,33 @@ fun PhotoGridScreen(
                     }
                 }
             )
+            
+            // 詳細検索トグル
+            TextButton(
+                onClick = { useAdvancedSearch = !useAdvancedSearch },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            ) {
+                Text(
+                    if (useAdvancedSearch) "簡易検索に戻す ▲" else "詳細検索 ▼",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+            
+            // 詳細検索パネル（展開時）
+            if (useAdvancedSearch) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    AdvancedSearchPanel(
+                        photos = photos,
+                        onConfigChange = { advancedSearchConfig = it }
+                    )
+                }
+            }
 
             Crossfade(targetState = filtered) { items ->
                 if (items.isEmpty()) {
