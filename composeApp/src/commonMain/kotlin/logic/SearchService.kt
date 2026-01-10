@@ -36,12 +36,20 @@ class SearchService {
                     val sizeText = it.sizeBytes?.toString() ?: ""
                     val dateText = it.capturedAt?.toString() ?: ""
                     
+                    // ✨ ユーザーメタデータ（title, tags, comment）も検索対象に追加
+                    val userMetaText = buildString {
+                        append(it.title).append(" ")
+                        append(it.tags.joinToString(" ")).append(" ")
+                        append(it.comment).append(" ")
+                    }
+                    
                     val haystack = (it.displayName + " " +
                             it.extension + " " +
                             metaText + " " +
                             resolutionText + " " +
                             sizeText + " " +
-                            dateText).lowercase()
+                            dateText + " " +
+                            userMetaText).lowercase()
                     
                     // 検索モードに応じて AND/OR 検索を切り替え
                     when (searchMode) {

@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.organize.photos.ui.App
+import com.organize.photos.logic.UserMetadataManager
 import javax.swing.JFileChooser
 import com.organize.photos.desktop.DesktopThumbnailGenerator
 import java.awt.Desktop
@@ -50,12 +51,15 @@ private fun pickDirectory(): String? {
         if (selected.isNotEmpty()) {
             val firstPath = selected[0].absolutePath
             FolderPathStore.saveFolderPath(firstPath)
+            // ✨ フォルダ選択時にメタデータマネージャーを初期化
+            UserMetadataManager.initialize(firstPath)
             // Return comma-separated paths for multiple folders
             selected.joinToString(",") { it.absolutePath }
         } else {
             val selectedPath = chooser.selectedFile?.absolutePath
             if (selectedPath != null) {
                 FolderPathStore.saveFolderPath(selectedPath)
+                UserMetadataManager.initialize(selectedPath)
             }
             selectedPath
         }

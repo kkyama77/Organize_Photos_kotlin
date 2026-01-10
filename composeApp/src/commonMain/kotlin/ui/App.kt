@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AssistChip
@@ -59,6 +61,8 @@ import com.organize.photos.logic.ScanFilters
 import com.organize.photos.logic.SearchService
 import com.organize.photos.logic.ThumbnailCache
 import com.organize.photos.logic.ThumbnailGenerator
+import com.organize.photos.logic.UserMetadata
+import com.organize.photos.logic.UserMetadataManager
 import com.organize.photos.model.PhotoItem
 import com.organize.photos.preview.PreviewData
 import kotlinx.coroutines.launch
@@ -411,6 +415,10 @@ private fun ImageViewerDialog(
     photo: PhotoItem,
     onDismiss: () -> Unit,
 ) {
+    var title by remember { mutableStateOf(photo.title) }
+    var tagsInput by remember { mutableStateOf(photo.tags.joinToString(", ")) }
+    var comment by remember { mutableStateOf(photo.comment) }
+    
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.fillMaxSize(0.9f),
@@ -418,7 +426,7 @@ private fun ImageViewerDialog(
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -445,7 +453,71 @@ private fun ImageViewerDialog(
                     )
                 }
                 
+                // ✨ ユーザーメタデータ編集セクション
                 Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text("📝 編集可能情報", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("タイトル") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = tagsInput,
+                        onValueChange = { tagsInput = it },
+                        label = { Text("タグ（カンマ区切り）") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        label = { Text("コメント") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .padding(vertical = 8.dp),
+                        maxLines = 4
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val userMetadata = UserMetadata(
+                                    title = title,
+                                    tags = tagsInput
+                                        .split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() },
+                                    comment = comment
+                                )
+                                UserMetadataManager.setUserMetadata(
+                                    photo.absolutePath,
+                                    userMetadata
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("💾 保存")
+                        }
+                    }
+                }
+                
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text("ファイル情報", style = MaterialTheme.typography.titleMedium)
                     Text("解像度: ${photo.width} x ${photo.height}", style = MaterialTheme.typography.bodySmall)
                     Text("サイズ: ${photo.sizeBytes?.let { formatSize(it) } ?: "不明"}", style = MaterialTheme.typography.bodySmall)
                     Text("パス: ${photo.absolutePath}", style = MaterialTheme.typography.bodySmall)

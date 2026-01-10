@@ -13,4 +13,8 @@ data class PhotoItem(
     val extension: String,
     val metadata: Map<String, String> = emptyMap(),
     val thumbnail: ByteArray? = null,
+    // ✨ ユーザー定義メタデータ
+    val title: String = "",
+    val tags: List<String> = emptyList(),
+    val comment: String = "",
 )
