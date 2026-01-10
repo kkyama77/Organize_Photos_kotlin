@@ -31,9 +31,6 @@ class DesktopPhotoScanner(
         val paths = root.split(",").map { it.trim() }.filter { it.isNotBlank() }
         
         for (pathStr in paths) {
-            // ✨ フォルダごとにメタデータマネージャーを初期化
-            UserMetadataManager.initialize(pathStr)
-            
             val rootPath = Paths.get(pathStr)
             if (!Files.exists(rootPath) || !rootPath.isDirectory()) continue
             
@@ -128,6 +125,8 @@ class DesktopPhotoScanner(
             }
         }
 
+        val userMeta = UserMetadataManager.getUserMetadata(file.absolutePath)
+
         return PhotoItem(
             id = file.absolutePath,
             displayName = file.name,
@@ -139,10 +138,10 @@ class DesktopPhotoScanner(
             extension = file.extension.ifBlank { "" }.lowercase(),
             metadata = meta,
             thumbnail = null,
-            // ✨ ユーザーメタデータを統合
-            title = UserMetadataManager.getUserMetadata(file.absolutePath).title,
-            tags = UserMetadataManager.getUserMetadata(file.absolutePath).tags,
-            comment = UserMetadataManager.getUserMetadata(file.absolutePath).comment,
+            // ✨ ユーザーメタデータを統合（XMP サイドカー読み込み）
+            title = userMeta.title,
+            tags = userMeta.tags,
+            comment = userMeta.comment,
         )
     }
 }

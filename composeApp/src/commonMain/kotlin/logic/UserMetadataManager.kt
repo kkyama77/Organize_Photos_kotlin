@@ -1,87 +1,117 @@
 package com.organize.photos.logic
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import java.io.File
 
-@Serializable
 data class UserMetadata(
     val title: String = "",
     val tags: List<String> = emptyList(),
     val comment: String = ""
 )
 
-@Serializable
-data class MetadataStorage(
-    val photos: Map<String, UserMetadata> = emptyMap()
-)
-
 /**
- * ユーザー定義メタデータ（タイトル、タグ、コメント）の管理
- * フォルダルートに .organize_photos_metadata.json を作成・管理
+ * ユーザー定義メタデータ（タイトル、タグ、コメント）を XMP サイドカーで管理。
+ * 写真と同じ場所に `<filename>.xmp` を作成し、ファイル本体は変更しない。
  */
 object UserMetadataManager {
-    private val json = Json { prettyPrint = true }
-    private var metadataStorage: MetadataStorage = MetadataStorage()
-    private var storageFile: File? = null
-    
+    private val cache = mutableMapOf<String, UserMetadata>()
+
+    fun clearCache() = cache.clear()
+
     /**
-     * フォルダ選択時に呼び出し、メタデータファイルをロード
-     */
-    fun initialize(folderPath: String) {
-        val folder = File(folderPath)
-        storageFile = File(folder, ".organize_photos_metadata.json")
-        
-        // 既存のメタデータがあれば読み込む
-        if (storageFile?.exists() == true) {
-            try {
-                val content = storageFile?.readText() ?: "{\"photos\":{}}"
-                metadataStorage = json.decodeFromString<MetadataStorage>(content)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                metadataStorage = MetadataStorage()
-            }
-        } else {
-            metadataStorage = MetadataStorage()
-        }
-    }
-    
-    /**
-     * ファイルパスに対応するユーザーメタデータを取得
+     * サイドカーから読み込み。なければ空メタデータ。
      */
     fun getUserMetadata(filePath: String): UserMetadata {
-        return metadataStorage.photos[filePath] ?: UserMetadata()
+        cache[filePath]?.let { return it }
+        val loaded = readSidecar(filePath) ?: UserMetadata()
+        cache[filePath] = loaded
+        return loaded
     }
-    
+
     /**
-     * ユーザーメタデータを設定して保存
+     * サイドカーへ保存し、キャッシュも更新。
      */
     fun setUserMetadata(filePath: String, metadata: UserMetadata) {
-        val updated = metadataStorage.photos.toMutableMap()
-        updated[filePath] = metadata
-        metadataStorage = metadataStorage.copy(photos = updated)
-        save()
+        cache[filePath] = metadata
+        writeSidecar(filePath, metadata)
     }
-    
-    /**
-     * メタデータをJSONファイルに保存
-     */
-    fun save() {
-        try {
-            val jsonString = json.encodeToString<MetadataStorage>(metadataStorage)
-            storageFile?.writeText(jsonString)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+
+    private fun sidecarFile(path: String): File {
+        val photoFile = File(path)
+        val parentDir = photoFile.parentFile ?: return File(path + ".xmp")
+        val xmpDir = File(parentDir, ".xmp")
+        xmpDir.mkdirs()
+        return File(xmpDir, photoFile.name + ".xmp")
     }
-    
-    /**
-     * メモリとファイルをクリア
-     */
-    fun clear() {
-        metadataStorage = MetadataStorage()
-        storageFile = null
+
+    private fun writeSidecar(path: String, meta: UserMetadata) {
+        runCatching {
+            val xml = buildXmp(meta)
+            sidecarFile(path).writeText(xml)
+        }.onFailure { it.printStackTrace() }
+    }
+
+    private fun readSidecar(path: String): UserMetadata? {
+        val file = sidecarFile(path)
+        if (!file.exists()) return null
+        val text = runCatching { file.readText() }.getOrElse { return null }
+        return parseXmp(text)
+    }
+
+    // --- XMP minimal builder / parser ---
+
+    private fun escape(s: String): String = s
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+
+    private fun buildXmp(meta: UserMetadata): String {
+        val title = escape(meta.title)
+        val comment = escape(meta.comment)
+        val tagsXml = meta.tags.joinToString("\n") { "        <rdf:li>${escape(it)}</rdf:li>" }
+
+        return """
+<?xml version="1.0" encoding="UTF-8"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <rdf:Description>
+      <dc:title>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">$title</rdf:li>
+        </rdf:Alt>
+      </dc:title>
+      <dc:subject>
+        <rdf:Bag>
+$tagsXml
+        </rdf:Bag>
+      </dc:subject>
+      <dc:description>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">$comment</rdf:li>
+        </rdf:Alt>
+      </dc:description>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+""".trimIndent()
+    }
+
+    private fun parseXmp(xml: String): UserMetadata? {
+        val title = Regex("<dc:title>.*?<rdf:li[^>]*>(.*?)</rdf:li>.*?</dc:title>", RegexOption.DOT_MATCHES_ALL)
+            .find(xml)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+
+        val comment = Regex("<dc:description>.*?<rdf:li[^>]*>(.*?)</rdf:li>.*?</dc:description>", RegexOption.DOT_MATCHES_ALL)
+            .find(xml)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+
+        val bagBlock = Regex("<dc:subject>.*?<rdf:Bag>(.*?)</rdf:Bag>.*?</dc:subject>", RegexOption.DOT_MATCHES_ALL)
+            .find(xml)?.groupValues?.getOrNull(1).orEmpty()
+        val tags = Regex("<rdf:li[^>]*>(.*?)</rdf:li>")
+            .findAll(bagBlock)
+            .mapNotNull { it.groupValues.getOrNull(1)?.trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
+
+        return UserMetadata(title = title, tags = tags, comment = comment)
     }
 }

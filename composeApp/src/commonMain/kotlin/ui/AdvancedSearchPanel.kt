@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,8 +67,7 @@ fun AdvancedSearchPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "詳細検索",
-                style = MaterialTheme.typography.titleMedium,
+            "撮影情報フィルター",
                 modifier = Modifier.weight(1f)
             )
             
@@ -168,7 +168,7 @@ private fun SearchFieldCategoryPanel(
         ) {
             Text(
                 categoryLabel(category),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Start
             )
@@ -229,7 +229,7 @@ private fun SearchFieldRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     field.displayName,
-                    style = MaterialTheme.typography.labelMedium
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 if (selectedFilter?.selectedValues?.isNotEmpty() == true) {
                     Text(
@@ -322,8 +322,9 @@ private fun ValueSelectorPanel(
             Divider(modifier = Modifier.padding(bottom = 8.dp))
             
             // 値チェックボックス
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(availableValues) { value ->
+            LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                items(availableValues.size) { index ->
+                    val value = availableValues[index]
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -343,7 +344,7 @@ private fun ValueSelectorPanel(
                         )
                         Text(
                             value,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(start = 8.dp)
