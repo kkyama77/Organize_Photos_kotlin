@@ -16,12 +16,12 @@ class SearchService {
         dateRange: ClosedRange<Instant>? = null,
         searchMode: SearchMode = SearchMode.OR,
     ): List<PhotoItem> {
-        // キーワードを複数に分割（カンマ区切り）
+        // キーワードを複数に分割（カンマ区切り）→ 正規化
         val keywords = if (query.isBlank()) {
             emptyList()
         } else {
             query.split(",")
-                .map { it.trim().lowercase() }
+                .map { TextNormalizer.normalize(it.trim()) }
                 .filter { it.isNotEmpty() }
         }
         
@@ -36,12 +36,23 @@ class SearchService {
                     val sizeText = it.sizeBytes?.toString() ?: ""
                     val dateText = it.capturedAt?.toString() ?: ""
                     
-                    val haystack = (it.displayName + " " +
-                            it.extension + " " +
-                            metaText + " " +
-                            resolutionText + " " +
-                            sizeText + " " +
-                            dateText).lowercase()
+                    // ✨ ユーザーメタデータ（title, tags, comment）も検索対象に追加
+                    val userMetaText = buildString {
+                        append(it.title).append(" ")
+                        append(it.tags.joinToString(" ")).append(" ")
+                        append(it.comment).append(" ")
+                    }
+                    
+                    // 検索対象テキストも正規化
+                    val haystack = TextNormalizer.normalize(
+                        it.displayName + " " +
+                        it.extension + " " +
+                        metaText + " " +
+                        resolutionText + " " +
+                        sizeText + " " +
+                        dateText + " " +
+                        userMetaText
+                    )
                     
                     // 検索モードに応じて AND/OR 検索を切り替え
                     when (searchMode) {

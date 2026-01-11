@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 package com.organize.photos.ui
 
 import androidx.compose.animation.Crossfade
@@ -18,11 +18,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -44,23 +49,35 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.organize.photos.logic.FakePhotoScanner
+import com.organize.photos.logic.AdvancedSearchConfig
+import com.organize.photos.logic.AdvancedSearchEngine
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ScanFilters
 import com.organize.photos.logic.SearchService
 import com.organize.photos.logic.ThumbnailCache
 import com.organize.photos.logic.ThumbnailGenerator
+import com.organize.photos.logic.UserMetadata
+import com.organize.photos.logic.UserMetadataManager
 import com.organize.photos.model.PhotoItem
 import com.organize.photos.preview.PreviewData
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.layout.ContentScale
 import com.organize.photos.image.decodeImageBitmap
 
 @Composable
@@ -93,8 +110,12 @@ fun PhotoGridScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedPhotoForView by remember { mutableStateOf<PhotoItem?>(null) }
+    var useAdvancedSearch by rememberSaveable { mutableStateOf(false) }
+    var advancedSearchConfig by remember { mutableStateOf(AdvancedSearchConfig()) }
     val searchService = remember { SearchService() }
+    val advancedSearchEngine = remember { AdvancedSearchEngine() }
     val thumbnailCache = remember { ThumbnailCache(maxItems = 256) }
+    val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
 
     fun triggerScan(target: String) {
@@ -110,8 +131,21 @@ fun PhotoGridScreen(
         }
     }
 
-    val filtered = remember(query, selectedExtensions, photos, searchMode) {
-        searchService.filter(photos, query, selectedExtensions, dateRange = null, searchMode = searchMode)
+    val filtered = remember(query, selectedExtensions, photos, searchMode, useAdvancedSearch, advancedSearchConfig) {
+        var result = photos
+        
+        // 簡易検索を適用（入力がある場合）
+        if (query.isNotBlank()) {
+            result = searchService.filter(result, query, selectedExtensions, dateRange = null, searchMode = searchMode)
+        }
+        
+        // 撮影情報フィルターを適用（展開されている場合）
+        if (useAdvancedSearch) {
+            result = advancedSearchEngine.filter(result, advancedSearchConfig)
+        }
+        
+        // 拡張子フィルタは常に適用
+        result.filter { selectedExtensions.isEmpty() || selectedExtensions.contains(it.extension.lowercase()) }
     }
 
     Scaffold(
@@ -162,19 +196,47 @@ fun PhotoGridScreen(
                     }
                 }
             )
+            
+            // 撮影情報フィルタートグル
+            TextButton(
+                onClick = { useAdvancedSearch = !useAdvancedSearch },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            ) {
+                Text(
+                    if (useAdvancedSearch) "撮影情報フィルターを閉じる ▲" else "撮影情報フィルター ▼",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+            
+            // 撮影情報フィルターパネル（展開時）
+            if (useAdvancedSearch) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    AdvancedSearchPanel(
+                        photos = photos,
+                        onConfigChange = { advancedSearchConfig = it }
+                    )
+                }
+            }
 
-            Crossfade(targetState = filtered) { items ->
-                if (items.isEmpty()) {
-                    EmptyState()
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 180.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items, key = { it.id }) { photo ->
+
+            if (filtered.isEmpty()) {
+                EmptyState()
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 180.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    state = gridState
+                ) {
+                    items(filtered, key = { it.id }) { photo ->
                             PhotoCard(
                                 item = photo,
                                 thumbnailGenerator = thumbnailGenerator,
@@ -186,7 +248,6 @@ fun PhotoGridScreen(
                             )
                         }
                     }
-                }
             }
         }
     }
@@ -195,7 +256,11 @@ fun PhotoGridScreen(
     selectedPhotoForView?.let { photo ->
         ImageViewerDialog(
             photo = photo,
-            onDismiss = { selectedPhotoForView = null }
+            onDismiss = { selectedPhotoForView = null },
+            onSave = { updated ->
+                photos = photos.map { if (it.id == updated.id) updated else it }
+                selectedPhotoForView = null
+            }
         )
     }
 }
@@ -223,25 +288,25 @@ private fun FilterRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("検索モード:", style = MaterialTheme.typography.labelSmall)
+            Text("検索モード:", style = MaterialTheme.typography.bodyLarge)
             Button(
                 onClick = { onSearchModeChange(SearchService.SearchMode.OR) },
-                modifier = Modifier.height(36.dp),
+                modifier = Modifier.height(40.dp),
                 colors = if (searchMode == SearchService.SearchMode.OR) {
                     androidx.compose.material3.ButtonDefaults.buttonColors()
                 } else {
                     androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                 }
-            ) { Text("OR", style = MaterialTheme.typography.labelSmall) }
+            ) { Text("OR", style = MaterialTheme.typography.labelLarge) }
             Button(
                 onClick = { onSearchModeChange(SearchService.SearchMode.AND) },
-                modifier = Modifier.height(36.dp),
+                modifier = Modifier.height(40.dp),
                 colors = if (searchMode == SearchService.SearchMode.AND) {
                     androidx.compose.material3.ButtonDefaults.buttonColors()
                 } else {
                     androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                 }
-            ) { Text("AND", style = MaterialTheme.typography.labelSmall) }
+            ) { Text("AND", style = MaterialTheme.typography.labelLarge) }
         }
 
         Row(
@@ -289,16 +354,30 @@ private fun PhotoCard(
         }
         thumbBitmap = thumbBytes?.let { decodeImageBitmap(it) }
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
-            .padding(12.dp)
-            .combinedClickable(
-                onClick = { showContextMenu = true },
-                onDoubleClick = onDoubleClick,
-                onLongClick = { showContextMenu = true }
-            )
+    val density = LocalDensity.current
+
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
+                .padding(12.dp)
+                // 右クリックでコンテキストメニューを開く。カーソル位置を覚えて同位置に表示する。
+                .onPointerEvent(PointerEventType.Press) { event ->
+                    if (event.buttons.isSecondaryPressed) {
+                        event.changes.firstOrNull()?.position?.let { pos ->
+                            menuOffset = pos
+                        }
+                        showContextMenu = true
+                    }
+                }
+                .combinedClickable(
+                    onClick = {},
+                    onDoubleClick = onDoubleClick,
+                    onLongClick = { showContextMenu = true }
+                )
     ) {
         Box(
             modifier = Modifier
@@ -329,13 +408,15 @@ private fun PhotoCard(
         item.capturedAt?.let { captured ->
             Text(text = "Captured: $captured", style = MaterialTheme.typography.bodySmall)
         }
-    }
-    
-    // Context menu
-    DropdownMenu(
-        expanded = showContextMenu,
-        onDismissRequest = { showContextMenu = false }
-    ) {
+        }
+        
+        // Context menu
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+            offset = with(density) { DpOffset(menuOffset.x.toDp(), menuOffset.y.toDp()) },
+            properties = PopupProperties(focusable = true)
+        ) {
         DropdownMenuItem(
             text = { Text("デフォルトアプリで開く") },
             onClick = {
@@ -364,6 +445,7 @@ private fun PhotoCard(
                 // TODO: Delete file
             }
         )
+        }
     }
 }
 
@@ -371,7 +453,12 @@ private fun PhotoCard(
 private fun ImageViewerDialog(
     photo: PhotoItem,
     onDismiss: () -> Unit,
+    onSave: (PhotoItem) -> Unit,
 ) {
+    var title by remember { mutableStateOf(photo.title) }
+    var tagsInput by remember { mutableStateOf(photo.tags.joinToString(", ")) }
+    var comment by remember { mutableStateOf(photo.comment) }
+    
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.fillMaxSize(0.9f),
@@ -379,7 +466,7 @@ private fun ImageViewerDialog(
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -406,7 +493,85 @@ private fun ImageViewerDialog(
                     )
                 }
                 
+                // ✨ ユーザーメタデータ編集セクション
                 Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text("📝 編集可能情報", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("タイトル") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = tagsInput,
+                        onValueChange = { tagsInput = it },
+                        label = { Text("タグ（カンマ区切り）") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        label = { Text("コメント") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .padding(vertical = 8.dp),
+                        maxLines = 4
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val userMetadata = UserMetadata(
+                                    title = title,
+                                    tags = tagsInput
+                                        .split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() },
+                                    comment = comment
+                                )
+                                UserMetadataManager.setUserMetadata(
+                                    photo.absolutePath,
+                                    userMetadata
+                                )
+                                // UI上のPhotoItemも即更新
+                                val updatedPhoto = photo.copy(
+                                    title = userMetadata.title,
+                                    tags = userMetadata.tags,
+                                    comment = userMetadata.comment
+                                )
+                                onSave(updatedPhoto)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("💾 保存")
+                        }
+                        
+                        TextButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("キャンセル")
+                        }
+                    }
+                }
+                
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text("ファイル情報", style = MaterialTheme.typography.titleMedium)
                     Text("解像度: ${photo.width} x ${photo.height}", style = MaterialTheme.typography.bodySmall)
                     Text("サイズ: ${photo.sizeBytes?.let { formatSize(it) } ?: "不明"}", style = MaterialTheme.typography.bodySmall)
                     Text("パス: ${photo.absolutePath}", style = MaterialTheme.typography.bodySmall)

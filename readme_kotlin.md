@@ -1,8 +1,18 @@
 # Kotlin Multiplatform 版 要件定義
 
+## 🖥️ 現在の対応状況
+**✅ Desktop版（Windows/macOS/Linux）完全対応**
+- 以下のすべての機能がデスクトップ環境で動作します
+
+**⚠️ Android/iOS 未対応**
+- 共通UI・ロジックは実装済みですが、モバイル固有機能（ストレージアクセス、サムネイル生成等）は未実装です
+- モバイル対応は今後の開発ブランチで実装予定
+
+---
+
 ## 対応プラットフォーム
-- iOS / Android / Windows / macOS / Linux
-- 優先: まずデスクトップ、後続でモバイル統合
+- ✅ **Windows / macOS / Linux** - 完全対応
+- ⚠️ iOS / Android - UI/ロジックのみ（プラットフォーム固有機能未実装）
 
 ## 機能要件
 - フォルダ選択: 写真格納フォルダを指定
@@ -43,20 +53,32 @@
 4. 検索/フィルタ（テキスト・日付・拡張子）を追加
 5. モバイル（Android→iOS）ビルドを有効化し、同UIを流用
 
-## 現在の実装スケルトン
-- KMP + Compose Multiplatform (Desktop/Android/iOS) プロジェクトを生成済み
-- デスクトップ: フォルダ選択 → 再帰スキャン（拡張子フィルタ対応、metadata-extractor でEXIF読み取り）
-- 共有UI: フォルダ選択＋再スキャンボタン、検索テキスト＋拡張子フィルタ、空表示/エラーメッセージ
-- 共有ロジック: スキャン/検索/サムネキャッシュのインターフェース（Desktop版は実装済み）
-- プラットフォーム別エントリ: Desktop `desktopRun`, Android `:composeApp:assembleDebug`, iOS `MainViewController()`
+## 現在の実装状況（Desktop版完成）
+- ✅ フォルダ選択 → 再帰スキャン（拡張子フィルタ対応）
+- ✅ EXIF読み取り（metadata-extractor）
+- ✅ サムネイル生成＋キャッシュ（LRUメモリキャッシュ＋ディスクキャッシュ）
+- ✅ 仮想リスト（LazyVerticalGrid）で数千枚高速表示
+- ✅ テキスト検索（日本語／英語表記ゆれ対応、カタカナ↔ひらがな統一、全角↔半角統一、同義語展開）
+- ✅ 日付レンジフィルタ＋拡張子フィルタ
+- ✅ 撮影情報フィルター（EXIF詳細検索：カメラ機種、レンズ、ISO、絞り値等）
+- ✅ 複合検索（簡易検索 + 撮影情報フィルター AND結合）
+- ✅ ユーザーメタデータ（タイトル、タグ、コメント）をXMPサイドカー（`.xmp/`フォルダ）に保存
+- ✅ 右クリックコンテキストメニュー（プロパティ編集、デフォルトアプリで開く）
+- ✅ スクロール位置保持（メタデータ編集後も表示位置維持）
+- ✅ 検索モード切替（OR/AND）
+- ✅ UI最適化（1400x900ウィンドウ、テキストサイズ調整）
+
+**モバイル（Android/iOS）対応は今後のブランチで実装予定**
 
 ## 使い方（ローカルビルド）
-前提: JDK 17, Android SDK (モバイル向け), Xcode (iOS 向け)。
+前提: JDK 17
 
-1. Gradle Wrapper 取得（初回のみ）
-	- Windows: `pwsh -Command "Invoke-WebRequest https://services.gradle.org/distributions/gradle-8.7-bin.zip -OutFile gradle-8.7-bin.zip; Expand-Archive gradle-8.7-bin.zip -DestinationPath .; Copy-Item gradle-8.7\lib\gradle-wrapper.jar gradle\wrapper\"`
-	- その後 `./gradlew --version` で確認
-2. デスクトップ実行: `./gradlew :composeApp:desktopRun`
+1. デスクトップ実行: 
+   ```bash
+   ./gradlew :composeApp:run
+   # または直接Gradle実行
+   ./gradle-8.7/bin/gradle :composeApp:run
+   ```
 3. 共通テスト: `./gradlew :composeApp:allTests`
 4. Android ビルド（エミュレータ/端末に転送）: `./gradlew :composeApp:assembleDebug`
 5. iOS: Xcode で `iosApp` ターゲットを設定し、`MainViewController()` をエントリとして利用（UIKit/Compose Multiplatform）

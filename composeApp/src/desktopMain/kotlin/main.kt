@@ -2,7 +2,9 @@ package com.organize.photos.desktop
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.application
 import com.organize.photos.ui.App
 import javax.swing.JFileChooser
@@ -77,7 +79,11 @@ private fun DesktopApp() {
 }
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "Organize Photos") {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "Organize Photos",
+        state = rememberWindowState(width = 1400.dp, height = 900.dp)
+    ) {
         DesktopApp()
     }
 }
