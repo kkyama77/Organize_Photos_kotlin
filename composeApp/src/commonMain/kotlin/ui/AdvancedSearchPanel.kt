@@ -44,10 +44,10 @@ import com.organize.photos.model.PhotoItem
 @Composable
 fun AdvancedSearchPanel(
     photos: List<PhotoItem>,
+    config: AdvancedSearchConfig,
     onConfigChange: (AdvancedSearchConfig) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var config by remember { mutableStateOf(AdvancedSearchConfig()) }
     var expandedCategories by remember { mutableStateOf(setOf<SearchFieldCategory>()) }
     
     val availableValues = remember(photos) { FieldAnalyzer.extractAvailableValues(photos) }
@@ -76,14 +76,14 @@ fun AdvancedSearchPanel(
             FilterChip(
                 selected = config.matchMode == SearchService.SearchMode.AND,
                 onClick = {
-                    config = config.copy(
+                    val newConfig = config.copy(
                         matchMode = if (config.matchMode == SearchService.SearchMode.AND) {
                             SearchService.SearchMode.OR
                         } else {
                             SearchService.SearchMode.AND
                         }
                     )
-                    onConfigChange(config)
+                    onConfigChange(newConfig)
                 },
                 label = {
                     Text(
@@ -97,8 +97,7 @@ fun AdvancedSearchPanel(
             if (config.fieldFilters.isNotEmpty()) {
                 IconButton(
                     onClick = {
-                        config = AdvancedSearchConfig()
-                        onConfigChange(config)
+                        onConfigChange(AdvancedSearchConfig())
                     },
                     modifier = Modifier.padding(start = 8.dp)
                 ) {
@@ -134,8 +133,7 @@ fun AdvancedSearchPanel(
                             } else {
                                 newFilters[fieldKey] = filter
                             }
-                            config = config.copy(fieldFilters = newFilters)
-                            onConfigChange(config)
+                            onConfigChange(config.copy(fieldFilters = newFilters))
                         }
                     )
                 }
@@ -160,18 +158,32 @@ private fun SearchFieldCategoryPanel(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         // カテゴリヘッダー
+        val selectedCount = fields.sumOf { field -> selectedFilters[field.key]?.selectedValues?.size ?: 0 }
+
         TextButton(
             onClick = { onExpandChange(!isExpanded) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 4.dp)
         ) {
+            // カテゴリ名
             Text(
                 categoryLabel(category),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Start
             )
+
+            // 選択数表示（ある場合のみ）
+            if (selectedCount > 0) {
+                Text(
+                    "（${selectedCount}個選択中）",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+
             Text(
                 if (isExpanded) "▼" else "▶",
                 style = MaterialTheme.typography.labelSmall

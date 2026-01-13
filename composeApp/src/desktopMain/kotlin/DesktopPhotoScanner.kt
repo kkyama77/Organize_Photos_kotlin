@@ -67,7 +67,14 @@ class DesktopPhotoScanner(
         var width: Int? = null
         var height: Int? = null
         var date: Instant? = null
+        var modifiedDate: Instant? = null
         val meta = mutableMapOf<String, String>()
+
+        // ファイルの更新日時を取得
+        runCatching {
+            val lastModified = Files.getLastModifiedTime(file.toPath()).toInstant().toKotlinInstant()
+            modifiedDate = lastModified
+        }
 
         // Try metadata-extractor first
         runCatching {
@@ -142,6 +149,8 @@ class DesktopPhotoScanner(
             title = userMeta.title,
             tags = userMeta.tags,
             comment = userMeta.comment,
+            // ✨ ファイル更新日時
+            modifiedAt = modifiedDate,
         )
     }
 }

@@ -70,6 +70,8 @@ import com.organize.photos.logic.AdvancedSearchEngine
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ScanFilters
 import com.organize.photos.logic.SearchService
+import com.organize.photos.logic.SortOrder
+import com.organize.photos.logic.SortService
 import com.organize.photos.logic.ThumbnailCache
 import com.organize.photos.logic.ThumbnailGenerator
 import com.organize.photos.logic.UserMetadata
@@ -106,11 +108,12 @@ fun PhotoGridScreen(
     var searchMode by rememberSaveable { mutableStateOf(SearchService.SearchMode.OR) }
     var selectedExtensions by rememberSaveable { mutableStateOf(setOf("jpg", "jpeg", "png", "heic", "tif", "tiff")) }
     var selectedFolder by rememberSaveable { mutableStateOf("") }
+    var sortOrder by rememberSaveable { mutableStateOf(SortOrder.FILE_NAME_ASC) }
     var photos by remember { mutableStateOf(initialItems) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedPhotoForView by remember { mutableStateOf<PhotoItem?>(null) }
-    var useAdvancedSearch by rememberSaveable { mutableStateOf(false) }
+    var isAdvancedPanelExpanded by rememberSaveable { mutableStateOf(false) }
     var advancedSearchConfig by remember { mutableStateOf(AdvancedSearchConfig()) }
     val searchService = remember { SearchService() }
     val advancedSearchEngine = remember { AdvancedSearchEngine() }
@@ -131,7 +134,11 @@ fun PhotoGridScreen(
         }
     }
 
-    val filtered = remember(query, selectedExtensions, photos, searchMode, useAdvancedSearch, advancedSearchConfig) {
+    val hasActiveAdvancedFilter = remember(advancedSearchConfig) {
+        advancedSearchConfig.fieldFilters.values.any { it.selectedValues.isNotEmpty() }
+    }
+
+    val filtered = remember(query, selectedExtensions, photos, searchMode, hasActiveAdvancedFilter, advancedSearchConfig, sortOrder) {
         var result = photos
         
         // 簡易検索を適用（入力がある場合）
@@ -140,12 +147,20 @@ fun PhotoGridScreen(
         }
         
         // 撮影情報フィルターを適用（展開されている場合）
-        if (useAdvancedSearch) {
+        if (hasActiveAdvancedFilter) {
             result = advancedSearchEngine.filter(result, advancedSearchConfig)
         }
         
         // 拡張子フィルタは常に適用
-        result.filter { selectedExtensions.isEmpty() || selectedExtensions.contains(it.extension.lowercase()) }
+        result = result.filter { selectedExtensions.isEmpty() || selectedExtensions.contains(it.extension.lowercase()) }
+        
+        // 並べ替えを適用
+        SortService.sort(result, sortOrder)
+    }
+    
+    // 並べ替え時にスクロール位置をトップに戻す
+    LaunchedEffect(sortOrder) {
+        gridState.scrollToItem(0)
     }
 
     Scaffold(
@@ -197,21 +212,27 @@ fun PhotoGridScreen(
                 }
             )
             
+            // 並べ替えドロップダウン
+            SortRow(
+                sortOrder = sortOrder,
+                onSortOrderChange = { sortOrder = it }
+            )
+            
             // 撮影情報フィルタートグル
             TextButton(
-                onClick = { useAdvancedSearch = !useAdvancedSearch },
+                onClick = { isAdvancedPanelExpanded = !isAdvancedPanelExpanded },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
             ) {
                 Text(
-                    if (useAdvancedSearch) "撮影情報フィルターを閉じる ▲" else "撮影情報フィルター ▼",
+                    if (isAdvancedPanelExpanded) "撮影情報フィルターをたたむ ▲" else "撮影情報フィルターを開く ▼",
                     style = MaterialTheme.typography.titleSmall
                 )
             }
             
             // 撮影情報フィルターパネル（展開時）
-            if (useAdvancedSearch) {
+            if (isAdvancedPanelExpanded) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -219,6 +240,7 @@ fun PhotoGridScreen(
                 ) {
                     AdvancedSearchPanel(
                         photos = photos,
+                        config = advancedSearchConfig,
                         onConfigChange = { advancedSearchConfig = it }
                     )
                 }
@@ -323,6 +345,49 @@ private fun FilterRow(
                         labelColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                     )
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SortRow(
+    sortOrder: SortOrder,
+    onSortOrderChange: (SortOrder) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("並べ替え:", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(80.dp))
+        
+        Box(modifier = Modifier.weight(1f)) {
+            Button(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(sortOrder.displayName, style = MaterialTheme.typography.bodyMedium)
+            }
+            
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                SortOrder.values().forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text(order.displayName) },
+                        onClick = {
+                            onSortOrderChange(order)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }

@@ -22,6 +22,7 @@ object PreviewData {
                 sizeBytes = (w * h * 3L),
                 extension = ext,
                 thumbnail = null,
+                modifiedAt = now.minus(randomOffset()),
             )
         }
     }

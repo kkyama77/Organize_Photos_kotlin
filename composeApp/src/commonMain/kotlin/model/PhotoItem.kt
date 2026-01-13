@@ -17,4 +17,6 @@ data class PhotoItem(
     val title: String = "",
     val tags: List<String> = emptyList(),
     val comment: String = "",
+    // ✨ ファイル作成日時（並べ替え用）
+    val modifiedAt: Instant?,
 )
