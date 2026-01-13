@@ -56,8 +56,8 @@ android {
         applicationId = "com.organize.photos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildFeatures {
@@ -81,7 +81,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "OrganizePhotos"
-            packageVersion = "1.0.1"
+            packageVersion = "1.0.2"
             description = "Photo organizer with EXIF metadata search"
             vendor = "kkyama77"
             copyright = "© 2026 kkyama77. Licensed under MIT."
