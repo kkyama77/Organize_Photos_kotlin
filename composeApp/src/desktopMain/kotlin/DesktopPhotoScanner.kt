@@ -1,4 +1,4 @@
-package com.organize.photos.desktop
+package com.organize.photos.logic
 
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.ExifIFD0Directory
@@ -21,10 +21,10 @@ import java.nio.file.Paths
 import javax.imageio.ImageIO
 import kotlin.io.path.isDirectory
 
-class DesktopPhotoScanner(
+actual class PhotoScanner(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
-) : PhotoScanner {
-    override suspend fun scan(root: String, filters: ScanFilters): List<PhotoItem> = withContext(dispatcher) {
+) {
+    actual suspend fun scan(root: String, filters: ScanFilters): List<PhotoItem> = withContext(dispatcher) {
         val results = mutableListOf<PhotoItem>()
         
         // Support comma-separated multiple folder paths

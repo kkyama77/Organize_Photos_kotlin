@@ -64,7 +64,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import com.organize.photos.logic.FakePhotoScanner
 import com.organize.photos.logic.AdvancedSearchConfig
 import com.organize.photos.logic.AdvancedSearchEngine
 import com.organize.photos.logic.PhotoScanner
@@ -84,7 +83,7 @@ import com.organize.photos.image.decodeImageBitmap
 
 @Composable
 fun App(
-    photoScanner: PhotoScanner = FakePhotoScanner(),
+    photoScanner: PhotoScanner,
     openFolderPicker: (() -> String?)? = null,
     initialItems: List<PhotoItem> = emptyList(),
     thumbnailGenerator: ThumbnailGenerator? = null,

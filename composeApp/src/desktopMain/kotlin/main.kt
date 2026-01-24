@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.application
+import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.ui.App
 import javax.swing.JFileChooser
 import com.organize.photos.desktop.DesktopThumbnailGenerator
@@ -68,7 +69,7 @@ private fun pickDirectory(): String? {
 
 @Composable
 private fun DesktopApp() {
-    val scanner = remember { DesktopPhotoScanner() }
+    val scanner = remember { PhotoScanner() }
     val thumbs = remember { DesktopThumbnailGenerator() }
     App(
         photoScanner = scanner, 
