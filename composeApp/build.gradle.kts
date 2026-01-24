@@ -38,6 +38,7 @@ kotlin {
                 implementation("androidx.core:core-ktx:1.13.1")
                 implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.1")
                 implementation("com.drewnoakes:metadata-extractor:2.18.0")
+                implementation("io.coil-kt:coil-compose:2.5.0")
             }
         }
         val desktopMain by getting {
