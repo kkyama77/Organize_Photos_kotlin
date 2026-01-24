@@ -4,6 +4,10 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import com.drew.imaging.ImageMetadataReader
+import com.drew.metadata.exif.ExifIFD0Directory
+import com.drew.metadata.exif.ExifSubIFDDirectory
+import com.drew.metadata.exif.GpsDirectory
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ScanFilters
 import com.organize.photos.logic.UserMetadataManager
@@ -15,7 +19,7 @@ import kotlinx.datetime.Instant
 import java.io.File
 
 /**
- * Android実装：MediaStore経由で写真をスキャン
+ * Android実装：MediaStore経由で写真をスキャン + EXIF抽出
  * ContentResolver を使用して外部ストレージの画像を取得
  */
 actual class PhotoScanner(
@@ -96,6 +100,9 @@ actual class PhotoScanner(
                             null
                         }
                         
+                        // EXIF メタデータ抽出
+                        val metadata = extractExifMetadata(file)
+                        
                         // ユーザーメタデータ（XMPサイドカー）
                         val userMeta = UserMetadataManager.getUserMetadata(file.absolutePath)
                         
@@ -108,7 +115,7 @@ actual class PhotoScanner(
                             height = if (height > 0) height else null,
                             sizeBytes = size,
                             extension = ext,
-                            metadata = emptyMap(), // TODO: EXIF抽出実装予定
+                            metadata = metadata,
                             thumbnail = null,
                             title = userMeta.title,
                             tags = userMeta.tags,
@@ -123,4 +130,43 @@ actual class PhotoScanner(
         
         results
     }
+    
+    private fun extractExifMetadata(file: File): Map<String, String> {
+        val meta = mutableMapOf<String, String>()
+        
+        runCatching {
+            val metadata = ImageMetadataReader.readMetadata(file)
+            val exif = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory::class.java)
+            val ifd0 = metadata.getFirstDirectoryOfType(ExifIFD0Directory::class.java)
+            val gps = metadata.getFirstDirectoryOfType(GpsDirectory::class.java)
+
+            // 基本的なEXIF情報を収集
+            ifd0?.getString(ExifIFD0Directory.TAG_MAKE)?.let { meta["CameraMake"] = it }
+            ifd0?.getString(ExifIFD0Directory.TAG_MODEL)?.let { meta["CameraModel"] = it }
+            exif?.getString(ExifSubIFDDirectory.TAG_LENS_MODEL)?.let { meta["LensModel"] = it }
+            exif?.getInteger(ExifSubIFDDirectory.TAG_ISO_EQUIVALENT)?.let { meta["ISO"] = it.toString() }
+            exif?.getString(ExifSubIFDDirectory.TAG_EXPOSURE_TIME)?.let { meta["ExposureTime"] = it }
+            exif?.getString(ExifSubIFDDirectory.TAG_FNUMBER)?.let { meta["FNumber"] = it }
+            exif?.getString(ExifSubIFDDirectory.TAG_FOCAL_LENGTH)?.let { meta["FocalLength"] = it }
+            ifd0?.getString(ExifIFD0Directory.TAG_ORIENTATION)?.let { meta["Orientation"] = it }
+            ifd0?.getString(ExifIFD0Directory.TAG_SOFTWARE)?.let { meta["Software"] = it }
+            exif?.getString(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL)?.let { meta["DateOriginalRaw"] = it }
+            gps?.geoLocation?.let { geo ->
+                meta["GPSLatitude"] = geo.latitude.toString()
+                meta["GPSLongitude"] = geo.longitude.toString()
+            }
+
+            // すべてのディレクトリ・タグを走査して格納（人間可読の説明）
+            metadata.directories.forEach { dir ->
+                dir.tags.forEach { tag ->
+                    val key = "${dir.name}:${tag.tagName}"
+                    val value = tag.description ?: dir.getDescription(tag.tagType) ?: ""
+                    if (value.isNotBlank()) meta[key] = value
+                }
+            }
+        }
+        
+        return meta
+    }
 }
+
