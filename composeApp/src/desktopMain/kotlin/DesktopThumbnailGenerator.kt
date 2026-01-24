@@ -1,6 +1,5 @@
-package com.organize.photos.desktop
+package com.organize.photos.logic
 
-import com.organize.photos.logic.ThumbnailGenerator
 import com.organize.photos.model.PhotoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,8 +10,8 @@ import java.io.File
 import javax.imageio.ImageIO
 import javax.imageio.stream.FileImageInputStream
 
-class DesktopThumbnailGenerator : ThumbnailGenerator {
-    override suspend fun generate(item: PhotoItem, maxSize: Int): ByteArray? = withContext(Dispatchers.IO) {
+actual class ThumbnailGenerator {
+    actual suspend fun generate(item: PhotoItem, maxSize: Int): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
             val file = File(item.absolutePath)
             if (!file.exists()) return@withContext null

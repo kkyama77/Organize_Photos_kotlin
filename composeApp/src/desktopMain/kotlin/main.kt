@@ -3,13 +3,13 @@ package com.organize.photos.desktop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
+import com.organize.photos.logic.PhotoScanner
+import com.organize.photos.logic.ThumbnailGenerator
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.application
-import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.ui.App
 import javax.swing.JFileChooser
-import com.organize.photos.desktop.DesktopThumbnailGenerator
 import java.awt.Desktop
 import java.io.File
 
@@ -70,7 +70,7 @@ private fun pickDirectory(): String? {
 @Composable
 private fun DesktopApp() {
     val scanner = remember { PhotoScanner() }
-    val thumbs = remember { DesktopThumbnailGenerator() }
+    val thumbs = remember { ThumbnailGenerator() }
     App(
         photoScanner = scanner, 
         openFolderPicker = ::pickDirectory, 
