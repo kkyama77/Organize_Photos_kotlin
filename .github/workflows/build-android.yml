@@ -20,11 +20,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Fix gradlew line endings
-        run: |
-          sed -i 's/\r$//' ./gradlew
-          chmod +x ./gradlew
-
       - name: Build Debug APK
         run: ./gradlew :composeApp:assembleDebug
 
