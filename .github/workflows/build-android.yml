@@ -9,28 +9,38 @@ on:
 
 jobs:
   build-android:
+    name: Assemble debug APK and upload artifact
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+      - name: Normalize gradlew and grant execute permission
+        run: |
+          sed -i 's/\r$//' ./gradlew || true
+          chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew :composeApp:assembleDebug
+      - name: Assemble composeApp debug APK
+        run: |
+          ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK artifact
+      - name: List produced APKs (for debug)
+        run: |
+          echo "=== APK files ==="
+          find composeApp/build -type f -name "*.apk" || true
+
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: composeApp-debug.apk
-          path: composeApp/build/outputs/apk/debug/composeApp-debug.apk
+          path: composeApp/build/outputs/**/*.apk
+          if-no-files-found: error
