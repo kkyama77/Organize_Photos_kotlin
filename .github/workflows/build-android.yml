@@ -25,7 +25,7 @@ jobs:
 
       - name: Convert gradlew to Unix line endings
         run: |
-          dos2unix ./gradlew
+          sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
 
       - name: Build Debug APK
