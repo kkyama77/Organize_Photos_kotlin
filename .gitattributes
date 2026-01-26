@@ -1,6 +1,6 @@
 # Auto-convert CRLF to LF for shell scripts and gradle files
 *.sh text eol=lf
-gradlew text eol=lf export-ignore
+gradlew text eol=lf
 gradlew.bat text eol=crlf
 
 # Auto-convert CRLF to LF for source files
