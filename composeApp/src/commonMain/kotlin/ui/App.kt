@@ -54,9 +54,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isSecondaryPressed
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -428,15 +425,6 @@ private fun PhotoCard(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                 .padding(12.dp)
-                // 右クリックでコンテキストメニューを開く。カーソル位置を覚えて同位置に表示する。
-                .onPointerEvent(PointerEventType.Press) { event ->
-                    if (event.buttons.isSecondaryPressed) {
-                        event.changes.firstOrNull()?.position?.let { pos ->
-                            menuOffset = pos
-                        }
-                        showContextMenu = true
-                    }
-                }
                 .combinedClickable(
                     onClick = {},
                     onDoubleClick = onDoubleClick,

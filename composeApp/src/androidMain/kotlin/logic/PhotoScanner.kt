@@ -1,4 +1,4 @@
-package com.organize.photos.android
+package com.organize.photos.logic
 
 import android.content.ContentResolver
 import android.content.Context
@@ -8,9 +8,6 @@ import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.ExifIFD0Directory
 import com.drew.metadata.exif.ExifSubIFDDirectory
 import com.drew.metadata.exif.GpsDirectory
-import com.organize.photos.logic.PhotoScanner
-import com.organize.photos.logic.ScanFilters
-import com.organize.photos.logic.UserMetadataManager
 import com.organize.photos.model.PhotoItem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
