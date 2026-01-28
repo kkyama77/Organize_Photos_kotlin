@@ -171,9 +171,16 @@ fun PhotoGridScreen(
                         Button(
                             onClick = {
                                 val picked = openFolderPicker.invoke()
+                                // Android では picked が null でも、フォルダピッカーが開く
+                                // picked がある場合（Desktop）は即座にスキャン
                                 if (!picked.isNullOrBlank()) {
                                     selectedFolder = picked
                                     triggerScan(picked)
+                                } else if (picked == null) {
+                                    // Android の場合: フォルダピッカーが非同期で開く
+                                    // ダミーパスでスキャンをトリガー（AndroidPhotoScanner は引数を無視）
+                                    selectedFolder = "android_storage"
+                                    triggerScan("android_storage")
                                 }
                             },
                             enabled = !isLoading,

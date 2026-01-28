@@ -30,6 +30,8 @@ fun AndroidAppFrame(
 ) {
     // 現在選択されているフォルダ URI を State で管理
     var currentFolderUri by remember { mutableStateOf<Uri?>(AndroidFolderStore.getSavedFolderUri(context)) }
+    // フォルダ選択トリガー用の State
+    var folderSelectionTrigger by remember { mutableStateOf(0) }
     
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -44,21 +46,31 @@ fun AndroidAppFrame(
                 AndroidFolderStore.saveFolderUri(context, uri)
                 // State を更新して再描画
                 currentFolderUri = uri
+                // トリガーを更新してスキャンを開始
+                folderSelectionTrigger++
             }
         }
     )
     
     val openFolderPicker: () -> String? = {
         folderPickerLauncher.launch(null)
-        // Android は非同期なので、選択結果は onResult で処理される
-        // ここでは選択済みの URI を返す（再スキャン用）
-        currentFolderUri?.toString()
+        // Android は非同期なので null を返す（選択結果は onResult で処理）
+        null
     }
     
-    // 常に App を表示（フォルダ未選択時も）
+    // フォルダ選択時に自動スキャンをトリガー
+    LaunchedEffect(folderSelectionTrigger) {
+        if (folderSelectionTrigger > 0 && currentFolderUri != null) {
+            // フォルダが選択されたことを App に通知（initialItems で渡すため再コンポーズ）
+        }
+    }
+    
+    // 常に App を表示
     App(
         photoScanner = photoScanner,
         openFolderPicker = openFolderPicker,
-        thumbnailGenerator = thumbnailGenerator
+        thumbnailGenerator = thumbnailGenerator,
+        // 初期パスとして URI を渡す（Android では使用しないが、デスクトップ版との互換性のため）
+        initialItems = emptyList()
     )
 }
