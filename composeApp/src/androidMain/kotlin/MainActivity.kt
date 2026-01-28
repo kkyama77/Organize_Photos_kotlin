@@ -35,6 +35,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
+        // AppPreferences を初期化
+        com.organize.photos.logic.AppPreferences.init(this)
+        
         // パーミッション確認
         checkAndRequestPermission()
         

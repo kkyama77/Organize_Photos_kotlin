@@ -107,6 +107,7 @@ fun PhotoGridScreen(
     var selectedExtensions by rememberSaveable { mutableStateOf(setOf("jpg", "jpeg", "png", "heic", "tif", "tiff")) }
     var selectedFolder by rememberSaveable { mutableStateOf("") }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.FILE_NAME_ASC) }
+    var thumbnailSize by remember { mutableStateOf(com.organize.photos.logic.AppPreferences.getThumbnailSize()) }
     var photos by remember { mutableStateOf(initialItems) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -226,6 +227,15 @@ fun PhotoGridScreen(
                 onSortOrderChange = { sortOrder = it }
             )
             
+            // サムネイルサイズ選択
+            ThumbnailSizeRow(
+                thumbnailSize = thumbnailSize,
+                onThumbnailSizeChange = { 
+                    thumbnailSize = it
+                    com.organize.photos.logic.AppPreferences.setThumbnailSize(it)
+                }
+            )
+            
             // 撮影情報フィルタートグル
             TextButton(
                 onClick = { isAdvancedPanelExpanded = !isAdvancedPanelExpanded },
@@ -260,7 +270,7 @@ fun PhotoGridScreen(
                 EmptyState()
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 180.dp),
+                    columns = GridCells.Adaptive(minSize = thumbnailSize.sizeDp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(12.dp),
@@ -398,6 +408,36 @@ private fun SortRow(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThumbnailSizeRow(
+    thumbnailSize: com.organize.photos.model.ThumbnailSize,
+    onThumbnailSizeChange: (com.organize.photos.model.ThumbnailSize) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("サムネイル:", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(80.dp))
+        
+        com.organize.photos.model.ThumbnailSize.values().forEach { size ->
+            Button(
+                onClick = { onThumbnailSizeChange(size) },
+                modifier = Modifier.weight(1f).height(40.dp),
+                colors = if (thumbnailSize == size) {
+                    androidx.compose.material3.ButtonDefaults.buttonColors()
+                } else {
+                    androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                }
+            ) {
+                Text(size.displayName, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
