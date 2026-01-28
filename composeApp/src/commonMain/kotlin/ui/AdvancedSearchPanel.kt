@@ -108,8 +108,12 @@ fun AdvancedSearchPanel(
         
         Divider(modifier = Modifier.padding(vertical = 12.dp))
         
-        // フィールド一覧
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        // フィールド一覧（スクロール可能）
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f) // 残りのスペースを埋める
+        ) {
             items(SearchFieldCategory.values()) { category ->
                 val fieldsInCategory = fieldsByCategory[category] ?: emptyList()
                 if (fieldsInCategory.isNotEmpty()) {

@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -29,6 +28,9 @@ fun AndroidAppFrame(
     photoScanner: PhotoScanner,
     thumbnailGenerator: ThumbnailGenerator
 ) {
+    // 現在選択されているフォルダ URI を State で管理
+    var currentFolderUri by remember { mutableStateOf<Uri?>(AndroidFolderStore.getSavedFolderUri(context)) }
+    
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
         onResult = { uri: Uri? ->
@@ -38,20 +40,22 @@ fun AndroidAppFrame(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-                // URI を保存して App に渡す
+                // URI を保存
                 AndroidFolderStore.saveFolderUri(context, uri)
+                // State を更新して再描画
+                currentFolderUri = uri
             }
         }
     )
     
-    fun pickFolder() {
+    val openFolderPicker: () -> String? = {
         folderPickerLauncher.launch(null)
+        // Android は非同期なので、選択結果は onResult で処理される
+        // ここでは選択済みの URI を返す（再スキャン用）
+        currentFolderUri?.toString()
     }
     
-    // 保存済みフォルダを復元
-    val savedUri = remember { AndroidFolderStore.getSavedFolderUri(context) }
-    
-    if (savedUri == null) {
+    if (currentFolderUri == null) {
         // フォルダが未選択の場合はピッカー表示
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -63,7 +67,7 @@ fun AndroidAppFrame(
             ) {
                 Text("写真フォルダを選択してください")
                 Button(
-                    onClick = { pickFolder() },
+                    onClick = { folderPickerLauncher.launch(null) },
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
                     Text("フォルダを選択")
@@ -74,10 +78,7 @@ fun AndroidAppFrame(
         // フォルダが選択済みの場合は App を表示
         App(
             photoScanner = photoScanner,
-            openFolderPicker = { 
-                pickFolder()
-                null // Android は非同期なので URI を返さない
-            },
+            openFolderPicker = openFolderPicker,
             thumbnailGenerator = thumbnailGenerator
         )
     }

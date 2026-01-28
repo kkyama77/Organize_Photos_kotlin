@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -161,30 +162,47 @@ fun PhotoGridScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Organize Photos") },
-                actions = {
-                    if (openFolderPicker != null) {
-                        Button(
-                            onClick = {
-                                val picked = openFolderPicker.invoke()
-                                if (!picked.isNullOrBlank()) {
-                                    selectedFolder = picked
-                                    triggerScan(picked)
-                                }
-                            },
-                            enabled = !isLoading
-                        ) { Text("フォルダ選択") }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    TextButton(
-                        onClick = { triggerScan(selectedFolder) },
-                        enabled = selectedFolder.isNotBlank() && !isLoading
+            Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Organize",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("再スキャン")
+                        if (openFolderPicker != null) {
+                            Button(
+                                onClick = {
+                                    val picked = openFolderPicker.invoke()
+                                    if (!picked.isNullOrBlank()) {
+                                        selectedFolder = picked
+                                        triggerScan(picked)
+                                    }
+                                },
+                                enabled = !isLoading,
+                                modifier = Modifier.height(36.dp)
+                            ) { Text("選択", style = MaterialTheme.typography.labelSmall) }
+                        }
+                        TextButton(
+                            onClick = { triggerScan(selectedFolder) },
+                            enabled = selectedFolder.isNotBlank() && !isLoading,
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Text("再スキャン", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
-            )
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -232,6 +250,7 @@ fun PhotoGridScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(300.dp)
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     AdvancedSearchPanel(
@@ -327,15 +346,16 @@ private fun FilterRow(
             ) { Text("AND", style = MaterialTheme.typography.labelLarge) }
         }
 
-        Row(
+        androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf("jpg", "jpeg", "png", "heic", "tif", "tiff").forEach { ext ->
                 val selected = selectedExtensions.contains(ext)
                 AssistChip(
                     onClick = { onToggleExtension(ext) },
-                    label = { Text(ext.uppercase()) },
+                    label = { Text(ext.uppercase(), style = MaterialTheme.typography.labelMedium) },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                         labelColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
