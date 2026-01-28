@@ -1,0 +1,53 @@
+name: Build Windows Binary
+
+on:
+  push:
+    branches:
+      - main
+      - feature/android-support
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows EXE and MSI
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: |
+          if (Test-Path gradlew) { 
+            attrib -r gradlew
+          }
+
+      - name: Build Desktop JAR
+        run: |
+          .\gradlew.bat :composeApp:packageDistributionForCurrentOS --no-daemon --stacktrace
+
+      - name: List generated files
+        run: |
+          Write-Host "=== Generated distribution files ==="
+          Get-ChildItem -Path composeApp\build\compose\binaries -Recurse -File | Select-Object FullName
+
+      - name: Upload Windows MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: organize-photos-windows-msi
+          path: composeApp/build/compose/binaries/main/msi/*.msi
+          if-no-files-found: warn
+
+      - name: Upload Windows EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: organize-photos-windows-exe
+          path: composeApp/build/compose/binaries/main/exe/*.exe
+          if-no-files-found: warn
