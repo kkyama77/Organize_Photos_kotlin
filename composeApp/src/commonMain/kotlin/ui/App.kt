@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -330,24 +332,28 @@ private fun FilterRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("検索モード:", style = MaterialTheme.typography.bodyLarge)
-            Button(
-                onClick = { onSearchModeChange(SearchService.SearchMode.OR) },
-                modifier = Modifier.height(40.dp),
-                colors = if (searchMode == SearchService.SearchMode.OR) {
-                    androidx.compose.material3.ButtonDefaults.buttonColors()
-                } else {
-                    androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                }
-            ) { Text("OR", style = MaterialTheme.typography.labelLarge) }
-            Button(
-                onClick = { onSearchModeChange(SearchService.SearchMode.AND) },
-                modifier = Modifier.height(40.dp),
-                colors = if (searchMode == SearchService.SearchMode.AND) {
-                    androidx.compose.material3.ButtonDefaults.buttonColors()
-                } else {
-                    androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                }
-            ) { Text("AND", style = MaterialTheme.typography.labelLarge) }
+            if (searchMode == SearchService.SearchMode.OR) {
+                Button(
+                    onClick = { onSearchModeChange(SearchService.SearchMode.OR) },
+                    modifier = Modifier.height(40.dp)
+                ) { Text("OR", style = MaterialTheme.typography.labelLarge) }
+            } else {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onSearchModeChange(SearchService.SearchMode.OR) },
+                    modifier = Modifier.height(40.dp)
+                ) { Text("OR", style = MaterialTheme.typography.labelLarge) }
+            }
+            if (searchMode == SearchService.SearchMode.AND) {
+                Button(
+                    onClick = { onSearchModeChange(SearchService.SearchMode.AND) },
+                    modifier = Modifier.height(40.dp)
+                ) { Text("AND", style = MaterialTheme.typography.labelLarge) }
+            } else {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onSearchModeChange(SearchService.SearchMode.AND) },
+                    modifier = Modifier.height(40.dp)
+                ) { Text("AND", style = MaterialTheme.typography.labelLarge) }
+            }
         }
 
         androidx.compose.foundation.layout.FlowRow(
@@ -424,16 +430,20 @@ private fun ThumbnailSizeRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text("サムネイル:", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(80.dp))
-        
-        com.organize.photos.model.ThumbnailSize.values().forEach { size ->
-            Button(
-                onClick = { onThumbnailSizeChange(size) },
-                modifier = Modifier.weight(1f).height(40.dp),
-                colors = if (thumbnailSize == size) {
-                    androidx.compose.material3.ButtonDefaults.buttonColors()
-                } else {
+    ) {if (thumbnailSize == size) {
+                Button(
+                    onClick = { onThumbnailSizeChange(size) },
+                    modifier = Modifier.weight(1f).height(40.dp)
+                ) {
+                    Text(size.displayName, style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onThumbnailSizeChange(size) },
+                    modifier = Modifier.weight(1f).height(40.dp)
+                ) {
+                    Text(size.displayName, style = MaterialTheme.typography.bodyMedium)
+                }
                     androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                 }
             ) {
@@ -480,6 +490,13 @@ private fun PhotoCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                 .padding(12.dp)
                 .combinedClickable(
+                .onPointerEvent(PointerEventType.Press) { event ->
+                    val position = event.changes.first().position
+                    menuOffset = position
+                    if (event.buttons.isSecondaryPressed) {
+                        showContextMenu = true
+                    }
+                }
                     onClick = {},
                     onDoubleClick = onDoubleClick,
                     onLongClick = { showContextMenu = true }

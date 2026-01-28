@@ -33,7 +33,8 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // システムバーとコンテンツの重なりを防ぐ
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         
         // AppPreferences を初期化
         com.organize.photos.logic.AppPreferences.init(this)
