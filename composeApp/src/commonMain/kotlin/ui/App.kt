@@ -489,7 +489,6 @@ private fun PhotoCard(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                 .padding(12.dp)
-                .combinedClickable(
                 .onPointerEvent(PointerEventType.Press) { event ->
                     val position = event.changes.first().position
                     menuOffset = position
@@ -497,6 +496,7 @@ private fun PhotoCard(
                         showContextMenu = true
                     }
                 }
+                .combinedClickable(
                     onClick = {},
                     onDoubleClick = onDoubleClick,
                     onLongClick = { showContextMenu = true }
