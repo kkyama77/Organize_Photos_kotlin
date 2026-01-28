@@ -430,7 +430,11 @@ private fun ThumbnailSizeRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {if (thumbnailSize == size) {
+    ) {
+        Text("サムネイル:", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(80.dp))
+        
+        com.organize.photos.model.ThumbnailSize.values().forEach { size ->
+            if (thumbnailSize == size) {
                 Button(
                     onClick = { onThumbnailSizeChange(size) },
                     modifier = Modifier.weight(1f).height(40.dp)
@@ -444,10 +448,6 @@ private fun ThumbnailSizeRow(
                 ) {
                     Text(size.displayName, style = MaterialTheme.typography.bodyMedium)
                 }
-                    androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                }
-            ) {
-                Text(size.displayName, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
