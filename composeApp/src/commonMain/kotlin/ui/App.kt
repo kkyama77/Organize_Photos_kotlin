@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -489,12 +487,9 @@ private fun PhotoCard(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                 .padding(12.dp)
-                .onPointerEvent(PointerEventType.Press) { event ->
-                    val position = event.changes.first().position
+                .rightClickable { position ->
                     menuOffset = position
-                    if (event.buttons.isSecondaryPressed) {
-                        showContextMenu = true
-                    }
+                    showContextMenu = true
                 }
                 .combinedClickable(
                     onClick = {},
