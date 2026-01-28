@@ -55,31 +55,10 @@ fun AndroidAppFrame(
         currentFolderUri?.toString()
     }
     
-    if (currentFolderUri == null) {
-        // フォルダが未選択の場合はピッカー表示
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text("写真フォルダを選択してください")
-                Button(
-                    onClick = { folderPickerLauncher.launch(null) },
-                    modifier = Modifier.padding(top = 16.dp)
-                ) {
-                    Text("フォルダを選択")
-                }
-            }
-        }
-    } else {
-        // フォルダが選択済みの場合は App を表示
-        App(
-            photoScanner = photoScanner,
-            openFolderPicker = openFolderPicker,
-            thumbnailGenerator = thumbnailGenerator
-        )
-    }
+    // 常に App を表示（フォルダ未選択時も）
+    App(
+        photoScanner = photoScanner,
+        openFolderPicker = openFolderPicker,
+        thumbnailGenerator = thumbnailGenerator
+    )
 }
