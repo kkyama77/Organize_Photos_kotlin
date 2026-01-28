@@ -163,47 +163,32 @@ fun PhotoGridScreen(
 
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Organize",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            TopAppBar(
+                title = { Text("Organize Photos", maxLines = 1) },
+                actions = {
+                    if (openFolderPicker != null) {
+                        Button(
+                            onClick = {
+                                val picked = openFolderPicker.invoke()
+                                if (!picked.isNullOrBlank()) {
+                                    selectedFolder = picked
+                                    triggerScan(picked)
+                                }
+                            },
+                            enabled = !isLoading,
+                            modifier = Modifier.height(40.dp)
+                        ) { Text("フォルダ選択") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    TextButton(
+                        onClick = { triggerScan(selectedFolder) },
+                        enabled = selectedFolder.isNotBlank() && !isLoading,
+                        modifier = Modifier.height(40.dp)
                     ) {
-                        if (openFolderPicker != null) {
-                            Button(
-                                onClick = {
-                                    val picked = openFolderPicker.invoke()
-                                    if (!picked.isNullOrBlank()) {
-                                        selectedFolder = picked
-                                        triggerScan(picked)
-                                    }
-                                },
-                                enabled = !isLoading,
-                                modifier = Modifier.height(36.dp)
-                            ) { Text("選択", style = MaterialTheme.typography.labelSmall) }
-                        }
-                        TextButton(
-                            onClick = { triggerScan(selectedFolder) },
-                            enabled = selectedFolder.isNotBlank() && !isLoading,
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Text("再スキャン", style = MaterialTheme.typography.labelSmall)
-                        }
+                        Text("再スキャン")
                     }
                 }
-            }
+            )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
