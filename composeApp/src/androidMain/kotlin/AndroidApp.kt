@@ -1,8 +1,10 @@
 package com.organize.photos.android
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -65,12 +67,50 @@ fun AndroidAppFrame(
         }
     }
     
+    // 画像を外部アプリで開く
+    val openWithDefaultApp: (String) -> Unit = { path ->
+        val uri = resolveImageUri(context, path)
+        if (uri != null) {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "image/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            runCatching { context.startActivity(intent) }
+        }
+    }
+
     // 常に App を表示
     App(
         photoScanner = photoScanner,
         openFolderPicker = openFolderPicker,
         thumbnailGenerator = thumbnailGenerator,
         // 初期パスとして URI を渡す（Android では使用しないが、デスクトップ版との互換性のため）
-        initialItems = emptyList()
+        initialItems = emptyList(),
+        openWithDefaultApp = openWithDefaultApp,
+        enableControlsCollapse = true
     )
+}
+
+private fun resolveImageUri(context: Context, path: String): Uri? {
+    val projection = arrayOf(MediaStore.Images.Media._ID)
+    val selection = "${MediaStore.Images.Media.DATA} = ?"
+    val selectionArgs = arrayOf(path)
+    val resolver = context.contentResolver
+
+    return runCatching {
+        resolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val id = cursor.getLong(0)
+                ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+            } else {
+                null
+            }
+        }
+    }.getOrNull()
 }
