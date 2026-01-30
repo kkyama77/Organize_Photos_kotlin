@@ -172,12 +172,7 @@ fun PhotoGridScreen(
         gridState.scrollToItem(0)
     }
 
-    // 画面回転などで再生成された場合に自動再スキャン（Android向け）
-    LaunchedEffect(selectedFolder) {
-        if (selectedFolder.isNotBlank() && photos.isEmpty() && !isLoading) {
-            triggerScan(selectedFolder)
-        }
-    }
+
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -238,62 +233,73 @@ fun PhotoGridScreen(
             }
 
             if (!enableControlsCollapse || !controlsCollapsed) {
-                FilterRow(
-                    query = query,
-                    onQueryChange = { query = it },
-                    searchMode = searchMode,
-                    onSearchModeChange = { searchMode = it },
-                    selectedExtensions = selectedExtensions,
-                    onToggleExtension = { ext ->
-                        selectedExtensions = if (selectedExtensions.contains(ext)) {
-                            selectedExtensions - ext
-                        } else {
-                            selectedExtensions + ext
-                        }
-                    }
-                )
-                
-                // 並べ替えドロップダウン
-                SortRow(
-                    sortOrder = sortOrder,
-                    onSortOrderChange = { sortOrder = it }
-                )
-                
-                // サムネイルサイズ選択
-                ThumbnailSizeRow(
-                    thumbnailSize = thumbnailSize,
-                    onThumbnailSizeChange = {
-                        thumbnailSize = it
-                        com.organize.photos.logic.AppPreferences.setThumbnailSize(it)
-                    }
-                )
-                
-                // 撮影情報フィルタートグル
-                TextButton(
-                    onClick = { isAdvancedPanelExpanded = !isAdvancedPanelExpanded },
-                    modifier = Modifier
+                // Android向け: スクロール可能なコントロール領域
+                val scrollModifier = if (enableControlsCollapse) {
+                    Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                ) {
-                    Text(
-                        if (isAdvancedPanelExpanded) "撮影情報フィルターをたたむ ▲" else "撮影情報フィルターを開く ▼",
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                        .verticalScroll(rememberScrollState())
+                } else {
+                    Modifier.fillMaxWidth()
                 }
-                
-                // 撮影情報フィルターパネル（展開時）
-                if (isAdvancedPanelExpanded) {
-                    Card(
+
+                Column(modifier = scrollModifier) {
+                    FilterRow(
+                        query = query,
+                        onQueryChange = { query = it },
+                        searchMode = searchMode,
+                        onSearchModeChange = { searchMode = it },
+                        selectedExtensions = selectedExtensions,
+                        onToggleExtension = { ext ->
+                            selectedExtensions = if (selectedExtensions.contains(ext)) {
+                                selectedExtensions - ext
+                            } else {
+                                selectedExtensions + ext
+                            }
+                        }
+                    )
+                    
+                    // 並べ替えドロップダウン
+                    SortRow(
+                        sortOrder = sortOrder,
+                        onSortOrderChange = { sortOrder = it }
+                    )
+                    
+                    // サムネイルサイズ選択
+                    ThumbnailSizeRow(
+                        thumbnailSize = thumbnailSize,
+                        onThumbnailSizeChange = {
+                            thumbnailSize = it
+                            com.organize.photos.logic.AppPreferences.setThumbnailSize(it)
+                        }
+                    )
+                    
+                    // 撮影情報フィルタートグル
+                    TextButton(
+                        onClick = { isAdvancedPanelExpanded = !isAdvancedPanelExpanded },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .padding(horizontal = 12.dp)
                     ) {
-                        AdvancedSearchPanel(
-                            photos = photos,
-                            config = advancedSearchConfig,
-                            onConfigChange = { advancedSearchConfig = it }
+                        Text(
+                            if (isAdvancedPanelExpanded) "撮影情報フィルターをたたむ ▲" else "撮影情報フィルターを開く ▼",
+                            style = MaterialTheme.typography.titleSmall
                         )
+                    }
+                    
+                    // 撮影情報フィルターパネル（展開時）
+                    if (isAdvancedPanelExpanded) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            AdvancedSearchPanel(
+                                photos = photos,
+                                config = advancedSearchConfig,
+                                onConfigChange = { advancedSearchConfig = it }
+                            )
+                        }
                     }
                 }
             }

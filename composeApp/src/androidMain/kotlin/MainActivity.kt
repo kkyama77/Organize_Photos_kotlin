@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import android.content.pm.ActivityInfo
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ThumbnailGenerator
 
@@ -35,6 +36,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // システムバーとコンテンツの重なりを防ぐ
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        // 画面を縦固定
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         
         // AppPreferences を初期化
         com.organize.photos.logic.AppPreferences.init(this)

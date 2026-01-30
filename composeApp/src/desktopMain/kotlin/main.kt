@@ -75,7 +75,8 @@ private fun DesktopApp() {
         photoScanner = scanner, 
         openFolderPicker = ::pickDirectory, 
         thumbnailGenerator = thumbs,
-        openWithDefaultApp = ::openFileWithDefaultApp
+        openWithDefaultApp = ::openFileWithDefaultApp,
+        enableControlsCollapse = true
     )
 }
 
