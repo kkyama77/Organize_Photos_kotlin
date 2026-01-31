@@ -331,9 +331,9 @@ fun PhotoGridScreen(
                                     scope.launch {
                                         val renamedPhoto = photoScanner?.renamePhoto(photo, newFileName)
                                         if (renamedPhoto != null) {
-                                            // リスト内の該当アイテムのみを更新
+                                            // リスト内の該当アイテムを更新（absolutePathで照合）
                                             photos = photos.map { p ->
-                                                if (p.id == photo.id) renamedPhoto else p
+                                                if (p.absolutePath == photo.absolutePath) renamedPhoto else p
                                             }
                                             // キャッシュをクリア（古いサムネイルを削除）
                                             thumbnailCache.remove(photo.id)

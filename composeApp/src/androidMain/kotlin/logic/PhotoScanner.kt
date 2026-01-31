@@ -184,8 +184,9 @@ actual class PhotoScanner(
             if (!renamed) return@withContext null
             
             // 新しいPhotoItemを作成して返す
+            // Android版ではidはMediaStore由来（数値）なので、idは変更しない
+            // ただし、absolutePathは更新する必要があり、UIはabsolutePathで識別される
             photo.copy(
-                id = newFile.absolutePath,
                 displayName = newFile.name,
                 absolutePath = newFile.absolutePath
             )
