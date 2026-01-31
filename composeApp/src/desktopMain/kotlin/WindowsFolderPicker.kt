@@ -19,13 +19,21 @@ object WindowsFolderPicker {
     
     @Structure.FieldOrder("hwndOwner", "pidlRoot", "pszDisplayName", "lpszTitle", "ulFlags", "lpfn", "lParam", "iImage")
     class BROWSEINFO : Structure() {
-        var hwndOwner: WinDef.HWND? = null
+        @JvmField
+        var hwndOwner: Pointer? = null
+        @JvmField
         var pidlRoot: Pointer? = null
-        var pszDisplayName: CharArray = CharArray(260)
+        @JvmField
+        var pszDisplayName: CharArray? = CharArray(260)
+        @JvmField
         var lpszTitle: String? = null
+        @JvmField
         var ulFlags: Int = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
+        @JvmField
         var lpfn: Pointer? = null
-        var lParam: WinDef.LPARAM? = null
+        @JvmField
+        var lParam: Pointer? = null
+        @JvmField
         var iImage: Int = 0
         
         companion object {
@@ -44,8 +52,13 @@ object WindowsFolderPicker {
         return try {
             val shell32 = Native.load("shell32", Shell32::class.java)
             val browseInfo = BROWSEINFO().apply {
+                hwndOwner = null  // null = デスクトップをオーナーにする
+                pidlRoot = null
+                pszDisplayName = CharArray(260)
                 lpszTitle = title
                 ulFlags = 0x0001 or 0x0040  // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+                lpfn = null
+                lParam = null
             }
             
             val pidl = shell32.SHBrowseForFolder(browseInfo)
