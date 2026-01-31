@@ -5,7 +5,6 @@ import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
 import com.sun.jna.platform.win32.ShellAPI
 import com.sun.jna.platform.win32.WinDef
-import com.sun.jna.platform.win32.WinNT
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
@@ -18,18 +17,19 @@ object WindowsFolderPicker {
      * Windows 標準フォルダ選択ダイアログを表示
      * @param title ダイアログのタイトル
      * @param initialPath 初期パス
+     * @param ownerHwnd 親ウィンドウのハンドル
      * @return 選択されたパス、またはnull
      */
     fun selectFolder(title: String, initialPath: String?, ownerHwnd: WinDef.HWND?): String? {
         return try {
             val browseInfo = ShellAPI.BROWSEINFO().apply {
-                hwndOwner = ownerHwnd
-                pidlRoot = null
-                pszDisplayName = CharArray(260)
-                lpszTitle = WString(title)
-                ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
-                lpfn = null
-                lParam = null
+                this.hwndOwner = ownerHwnd
+                this.pidlRoot = null
+                this.pszDisplayName = CharArray(260)
+                this.lpszTitle = WString(title)
+                this.ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
+                this.lpfn = null
+                this.lParam = 0L
             }
 
             val pidl = Shell32.INSTANCE.SHBrowseForFolder(browseInfo)
@@ -45,7 +45,7 @@ object WindowsFolderPicker {
                 }
             }
         } catch (e: Exception) {
-            // フォールバック: File APIで実装（ユーザーが不要な場合は削除）
+            // フォールバック
             null
         }
     }

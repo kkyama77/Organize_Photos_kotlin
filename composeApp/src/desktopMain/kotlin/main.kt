@@ -9,7 +9,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.application
 import com.organize.photos.ui.App
-import com.sun.jna.platform.WindowUtils
 import javax.swing.JFileChooser
 import java.awt.Desktop
 import java.io.File
@@ -40,20 +39,11 @@ private fun openFileWithDefaultApp(filePath: String) {
 
 private fun isWindows(): Boolean = System.getProperty("os.name").lowercase().contains("win")
 
-private fun pickDirectory(ownerWindow: java.awt.Window?): String? {
-    // Windows 標準ダイアログを使用
-    if (isWindows()) {
-        val lastPath = FolderPathStore.getLastFolderPath()
-        val initialDir = if (lastPath != null && File(lastPath).exists()) lastPath else null
-        val ownerHwnd = ownerWindow?.let { WindowUtils.getWindowHandle(it) }
-        val selectedPath = WindowsFolderPicker.selectFolder("フォルダを選択", initialDir, ownerHwnd)
-        if (selectedPath != null) {
-            FolderPathStore.saveFolderPath(selectedPath)
-        }
-        return selectedPath
-    }
-    
-    // Linux/macOS: Compose UI フォルダピッカー
+expect fun pickDirectory(ownerWindow: java.awt.Window?): String?
+
+// デフォルト実装 (Linux/macOS)
+actual fun pickDirectory(ownerWindow: java.awt.Window?): String? {
+    // Linux/macOS: JFileChooser を使用
     val chooser = JFileChooser().apply {
         fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
         isMultiSelectionEnabled = true // Allow multiple folder selection

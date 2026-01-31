@@ -196,7 +196,7 @@ actual class PhotoScanner(
                     put(MediaStore.Images.Media.DISPLAY_NAME, fileNameWithExt)
                 }
 
-                fun tryUpdateMediaStore(): Boolean {
+                suspend fun tryUpdateMediaStore(): Boolean {
                     return try {
                         contentResolver.update(contentUri, values, null, null) > 0
                     } catch (e: android.app.RecoverableSecurityException) {
