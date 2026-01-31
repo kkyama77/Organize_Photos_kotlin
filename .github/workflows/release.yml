@@ -1,0 +1,110 @@
+name: Release - Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    name: Bump Version and Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read current version
+        id: current_version
+        run: |
+          VERSION=$(grep "^app.version.name=" gradle.properties | cut -d'=' -f2)
+          CODE=$(grep "^app.version.code=" gradle.properties | cut -d'=' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "code=$CODE" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          VERSION=${{ steps.current_version.outputs.version }}
+          CODE=${{ steps.current_version.outputs.code }}
+          BUMP_TYPE=${{ github.event.inputs.bump_type }}
+          
+          # Parse version parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # Bump version
+          case "$BUMP_TYPE" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_CODE=$((CODE + 1))
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_code=$NEW_CODE" >> $GITHUB_OUTPUT
+          
+          echo "✓ Version bump: $VERSION → $NEW_VERSION (code: $CODE → $NEW_CODE)"
+
+      - name: Update gradle.properties
+        run: |
+          sed -i "s/^app.version.name=.*/app.version.name=${{ steps.bump_version.outputs.new_version }}/" gradle.properties
+          sed -i "s/^app.version.code=.*/app.version.code=${{ steps.bump_version.outputs.new_code }}/" gradle.properties
+          cat gradle.properties | grep "^app.version"
+
+      - name: Create commit and tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add gradle.properties
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }}"
+          git tag -a "v${{ steps.bump_version.outputs.new_version }}" -m "Release v${{ steps.bump_version.outputs.new_version }}"
+          git push origin main
+          git push origin "v${{ steps.bump_version.outputs.new_version }}"
+
+      - name: Create Release Note
+        run: |
+          echo "## Release v${{ steps.bump_version.outputs.new_version }}" > /tmp/release_note.md
+          echo "" >> /tmp/release_note.md
+          echo "**Version Code:** ${{ steps.bump_version.outputs.new_code }}" >> /tmp/release_note.md
+          echo "" >> /tmp/release_note.md
+          echo "**Changes:**" >> /tmp/release_note.md
+          echo "- Version bumped: ${{ steps.current_version.outputs.version }} → ${{ steps.bump_version.outputs.new_version }}" >> /tmp/release_note.md
+          echo "" >> /tmp/release_note.md
+          echo "**Upgrade Instructions:**" >> /tmp/release_note.md
+          echo "- **Android:** Install the new APK (data preserved)" >> /tmp/release_note.md
+          echo "- **Windows:** Run the MSI installer (settings preserved)" >> /tmp/release_note.md
+          echo "- **Linux:** Install via package manager (settings preserved)" >> /tmp/release_note.md
+          cat /tmp/release_note.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.bump_version.outputs.new_version }}
+          body_path: /tmp/release_note.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
