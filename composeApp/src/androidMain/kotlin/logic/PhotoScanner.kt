@@ -178,19 +178,104 @@ actual class PhotoScanner(
                 newFileName
             }
             
-            val newFile = File(oldFile.parent, fileNameWithExt)
-            val renamed = oldFile.renameTo(newFile)
-            
-            if (!renamed) return@withContext null
-            
-            // 新しいPhotoItemを作成して返す
-            // Android版ではidはMediaStore由来（数値）なので、idは変更しない
-            // ただし、absolutePathは更新する必要があり、UIはabsolutePathで識別される
-            photo.copy(
-                displayName = newFile.name,
-                absolutePath = newFile.absolutePath
-            )
+            // Android 10 (API 29) 以降は MediaStore API を使用
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // MediaStore経由でファイル名を変更
+                val mediaId = photo.id.toLongOrNull()
+                if (mediaId == null) {
+                    android.util.Log.e("PhotoScanner", "Invalid MediaStore ID format: ${photo.id}")
+                    return@withContext null
+                }
+                
+                val contentUri = android.content.ContentUris.withAppendedId(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    mediaId
+                )
+                
+                val values = android.content.ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileNameWithExt)
+                }
+                
+                val rowsUpdated = contentResolver.update(contentUri, values, null, null)
+                if (rowsUpdated == 0) {
+                    android.util.Log.e("PhotoScanner", "Failed to update MediaStore entry for content URI: $contentUri")
+                    return@withContext null
+                }
+                
+                // 更新後の新しいパスを取得
+                // DATA列は非推奨だが、フルパスを取得する最も確実な方法
+                val newPath = contentResolver.query(
+                    contentUri,
+                    arrayOf(MediaStore.Images.Media.DATA, MediaStore.Images.Media.RELATIVE_PATH),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                        val path = cursor.getString(dataColumn)
+                        if (!path.isNullOrBlank()) {
+                            path
+                        } else {
+                            // フォールバック: RELATIVE_PATH + DISPLAY_NAME から構築
+                            val relativePathColumn = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+                            if (relativePathColumn >= 0) {
+                                val relativePath = cursor.getString(relativePathColumn)
+                                if (!relativePath.isNullOrBlank()) {
+                                    "${android.os.Environment.getExternalStorageDirectory()}/$relativePath$fileNameWithExt"
+                                } else null
+                            } else {
+                                // 最後のフォールバック: 親ディレクトリ + 新しいファイル名
+                                "${oldFile.parent}/$fileNameWithExt"
+                            }
+                        }
+                    } else null
+                }
+                
+                if (newPath == null) {
+                    android.util.Log.e("PhotoScanner", "Failed to retrieve new path after rename")
+                    return@withContext null
+                }
+                
+                // 新しいPhotoItemを作成して返す
+                photo.copy(
+                    displayName = fileNameWithExt,
+                    absolutePath = newPath
+                )
+            } else {
+                // Android 9 (API 28) 以下は従来の File.renameTo() を使用
+                val newFile = File(oldFile.parent, fileNameWithExt)
+                val renamed = oldFile.renameTo(newFile)
+                
+                if (!renamed) {
+                    android.util.Log.e("PhotoScanner", "File.renameTo() failed for: ${oldFile.absolutePath}")
+                    return@withContext null
+                }
+                
+                // MediaStore を更新（古い Android でも MediaStore の同期が必要）
+                val values = android.content.ContentValues().apply {
+                    put(MediaStore.Images.Media.DATA, newFile.absolutePath)
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileNameWithExt)
+                }
+                
+                // 古いパスで検索して更新
+                val selection = "${MediaStore.Images.Media.DATA} = ?"
+                val selectionArgs = arrayOf(oldFile.absolutePath)
+                contentResolver.update(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    values,
+                    selection,
+                    selectionArgs
+                )
+                
+                // 新しいPhotoItemを作成して返す
+                photo.copy(
+                    displayName = newFile.name,
+                    absolutePath = newFile.absolutePath
+                )
+            }
         } catch (e: Exception) {
+            android.util.Log.e("PhotoScanner", "Exception during renamePhoto", e)
             null
         }
     }
