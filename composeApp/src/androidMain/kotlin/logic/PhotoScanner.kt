@@ -195,9 +195,38 @@ actual class PhotoScanner(
                 val values = android.content.ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, fileNameWithExt)
                 }
-                
-                val rowsUpdated = contentResolver.update(contentUri, values, null, null)
-                if (rowsUpdated == 0) {
+
+                fun tryUpdateMediaStore(): Boolean {
+                    return try {
+                        contentResolver.update(contentUri, values, null, null) > 0
+                    } catch (e: android.app.RecoverableSecurityException) {
+                        val requestWrite = AndroidWritePermission.requestWrite
+                        if (requestWrite != null) {
+                            val granted = requestWrite(e.userAction.actionIntent.intentSender)
+                            if (granted) {
+                                contentResolver.update(contentUri, values, null, null) > 0
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                }
+
+                var updated = tryUpdateMediaStore()
+                if (!updated && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    val requestWrite = AndroidWritePermission.requestWrite
+                    if (requestWrite != null) {
+                        val intentSender = MediaStore.createWriteRequest(contentResolver, listOf(contentUri)).intentSender
+                        val granted = requestWrite(intentSender)
+                        if (granted) {
+                            updated = contentResolver.update(contentUri, values, null, null) > 0
+                        }
+                    }
+                }
+
+                if (!updated) {
                     android.util.Log.e("PhotoScanner", "Failed to update MediaStore entry for content URI: $contentUri")
                     return@withContext null
                 }

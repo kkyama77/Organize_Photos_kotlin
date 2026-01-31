@@ -63,10 +63,16 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun checkAndRequestPermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+        val permission = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                Manifest.permission.READ_MEDIA_IMAGES
+            }
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.P -> {
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            }
+            else -> {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
         }
         
         when {

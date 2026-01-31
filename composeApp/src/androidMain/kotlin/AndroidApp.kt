@@ -1,11 +1,13 @@
 package com.organize.photos.android
 
+import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.organize.photos.logic.AndroidWritePermission
 import com.organize.photos.logic.PhotoScanner
 import com.organize.photos.logic.ThumbnailGenerator
 import com.organize.photos.ui.App
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Android用フォルダピッカー + App フレーム
@@ -58,6 +62,25 @@ fun AndroidAppFrame(
         folderPickerLauncher.launch(null)
         // Android は非同期なので null を返す（選択結果は onResult で処理）
         null
+    }
+
+    // 書き込み許可リクエスト（MediaStore）
+    val pendingWriteRequest = remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
+    val writeRequestLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+        onResult = { result ->
+            pendingWriteRequest.value?.complete(result.resultCode == Activity.RESULT_OK)
+            pendingWriteRequest.value = null
+        }
+    )
+    DisposableEffect(Unit) {
+        AndroidWritePermission.requestWrite = { intentSender ->
+            val deferred = CompletableDeferred<Boolean>()
+            pendingWriteRequest.value = deferred
+            writeRequestLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+            deferred.await()
+        }
+        onDispose { AndroidWritePermission.requestWrite = null }
     }
     
     // フォルダ選択時に自動スキャンをトリガー
