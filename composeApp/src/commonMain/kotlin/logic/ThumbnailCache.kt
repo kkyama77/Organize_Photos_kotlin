@@ -18,5 +18,7 @@ class ThumbnailCache(private val maxItems: Int = 256) {
         cache[item.id] = bytes
     }
 
+    suspend fun remove(id: String) = lock.withLock { cache.remove(id) }
+
     suspend fun clear() = lock.withLock { cache.clear() }
 }

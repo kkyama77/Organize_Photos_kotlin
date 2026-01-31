@@ -329,7 +329,15 @@ fun PhotoGridScreen(
                                 onShowProperties = { selectedPhotoForView = photo },
                                 onRename = { newFileName ->
                                     scope.launch {
-                                        photoScanner?.renamePhoto(photo, newFileName)
+                                        val renamedPhoto = photoScanner?.renamePhoto(photo, newFileName)
+                                        if (renamedPhoto != null) {
+                                            // リスト内の該当アイテムのみを更新
+                                            photos = photos.map { p ->
+                                                if (p.id == photo.id) renamedPhoto else p
+                                            }
+                                            // キャッシュをクリア（古いサムネイルを削除）
+                                            thumbnailCache.remove(photo.id)
+                                        }
                                     }
                                 }
                             )
@@ -514,7 +522,8 @@ private fun PhotoCard(
     var thumbBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    var newFileName by remember { mutableStateOf(item.displayName) }
+    // ファイル名を拡張子なしで初期化
+    var newFileName by remember { mutableStateOf(item.displayName.substringBeforeLast(".")) }
     var menuOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
     LaunchedEffect(item.id) {

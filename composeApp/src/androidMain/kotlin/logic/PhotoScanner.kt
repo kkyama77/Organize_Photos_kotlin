@@ -166,15 +166,31 @@ actual class PhotoScanner(
         return meta
     }
 
-    actual suspend fun renamePhoto(photo: PhotoItem, newFileName: String): Boolean = withContext(dispatcher) {
+    actual suspend fun renamePhoto(photo: PhotoItem, newFileName: String): PhotoItem? = withContext(dispatcher) {
         try {
             val oldFile = File(photo.absolutePath)
-            if (!oldFile.exists() || !oldFile.isFile) return@withContext false
+            if (!oldFile.exists() || !oldFile.isFile) return@withContext null
             
-            val newFile = File(oldFile.parent, newFileName)
-            oldFile.renameTo(newFile)
+            // 拡張子を自動付上
+            val fileNameWithExt = if (!newFileName.endsWith(".${photo.extension}")) {
+                "$newFileName.${photo.extension}"
+            } else {
+                newFileName
+            }
+            
+            val newFile = File(oldFile.parent, fileNameWithExt)
+            val renamed = oldFile.renameTo(newFile)
+            
+            if (!renamed) return@withContext null
+            
+            // 新しいPhotoItemを作成して返す
+            photo.copy(
+                id = newFile.absolutePath,
+                displayName = newFile.name,
+                absolutePath = newFile.absolutePath
+            )
         } catch (e: Exception) {
-            false
+            null
         }
     }
 }
