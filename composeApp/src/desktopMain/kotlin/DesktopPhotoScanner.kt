@@ -51,6 +51,18 @@ actual class PhotoScanner(
         results
     }
 
+    actual suspend fun renamePhoto(photo: PhotoItem, newFileName: String): Boolean = withContext(dispatcher) {
+        return try {
+            val oldFile = File(photo.absolutePath)
+            if (!oldFile.exists()) return@withContext false
+            
+            val newFile = File(oldFile.parent, newFileName)
+            oldFile.renameTo(newFile)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun matchesExtension(file: File, allowed: Set<String>): Boolean {
         if (allowed.isEmpty()) return true
         val ext = file.extension.lowercase()

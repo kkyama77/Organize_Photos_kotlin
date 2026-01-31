@@ -9,4 +9,5 @@ import com.organize.photos.model.PhotoItem
  */
 expect class PhotoScanner {
     suspend fun scan(root: String, filters: ScanFilters = ScanFilters()): List<PhotoItem>
+    suspend fun renamePhoto(photo: PhotoItem, newFileName: String): Boolean
 }

@@ -165,5 +165,17 @@ actual class PhotoScanner(
         
         return meta
     }
+
+    actual suspend fun renamePhoto(photo: PhotoItem, newFileName: String): Boolean = withContext(dispatcher) {
+        return try {
+            val oldFile = File(photo.absolutePath)
+            if (!oldFile.exists() || !oldFile.isFile) return@withContext false
+            
+            val newFile = File(oldFile.parent, newFileName)
+            oldFile.renameTo(newFile)
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
 

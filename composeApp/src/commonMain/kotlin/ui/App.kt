@@ -324,7 +324,10 @@ fun PhotoGridScreen(
                                 onDoubleClick = { 
                                     openWithDefaultApp?.invoke(photo.absolutePath)
                                 },
-                                onShowProperties = { selectedPhotoForView = photo }
+                                onShowProperties = { selectedPhotoForView = photo },
+                                onRename = { newFileName ->
+                                    photoScanner?.renamePhoto(photo, newFileName)
+                                }
                             )
                         }
                     }
@@ -497,6 +500,7 @@ private fun PhotoCard(
     cache: ThumbnailCache,
     onDoubleClick: () -> Unit = {},
     onShowProperties: () -> Unit = {},
+    onRename: (newFileName: String) -> Unit = {},
 ) {
     val gradient = Brush.verticalGradient(
         colors = listOf(Color(0xFF1E88E5), Color(0xFF42A5F5))
@@ -504,6 +508,8 @@ private fun PhotoCard(
     var thumbBytes by remember { mutableStateOf(item.thumbnail) }
     var thumbBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var newFileName by remember { mutableStateOf(item.displayName) }
     var menuOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
     LaunchedEffect(item.id) {
@@ -589,19 +595,62 @@ private fun PhotoCard(
             }
         )
         DropdownMenuItem(
-            text = { Text("パスをコピー") },
+            text = { Text("ファイル名変更") },
             onClick = {
                 showContextMenu = false
-                // TODO: Copy to clipboard
+                showRenameDialog = true
             }
         )
-        DropdownMenuItem(
-            text = { Text("削除") },
-            onClick = {
-                showContextMenu = false
-                // TODO: Delete file
+        }
+        
+        // Rename dialog
+        if (showRenameDialog) {
+            Dialog(
+                onDismissRequest = { showRenameDialog = false },
+                properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
+            ) {
+                Surface(
+                    modifier = Modifier.width(300.dp).padding(16.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("ファイル名変更", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = newFileName,
+                            onValueChange = { newFileName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("新しいファイル名") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { showRenameDialog = false },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("キャンセル")
+                            }
+                            Button(
+                                onClick = {
+                                    showRenameDialog = false
+                                    onRename(newFileName)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("変更")
+                            }
+                        }
+                    }
+                }
             }
-        )
         }
     }
 }
