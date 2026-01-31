@@ -5,6 +5,7 @@ import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
 import com.sun.jna.platform.win32.ShellAPI
 import com.sun.jna.platform.win32.WinDef
+import com.sun.jna.platform.WindowUtils
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
@@ -17,11 +18,18 @@ object WindowsFolderPicker {
      * Windows 標準フォルダ選択ダイアログを表示
      * @param title ダイアログのタイトル
      * @param initialPath 初期パス
-     * @param ownerHwnd 親ウィンドウのハンドル
+     * @param ownerWindow 親ウィンドウ
      * @return 選択されたパス、またはnull
      */
-    fun selectFolder(title: String, initialPath: String?, ownerHwnd: WinDef.HWND?): String? {
+    fun selectFolder(title: String, initialPath: String?, ownerWindow: java.awt.Window?): String? {
+        // Windows以外のプラットフォームでは何もしない
+        if (!System.getProperty("os.name").lowercase().contains("win")) {
+            return null
+        }
+        
         return try {
+            val ownerHwnd = ownerWindow?.let { WindowUtils.getHWND(it) }
+            
             val browseInfo = ShellAPI.BROWSEINFO().apply {
                 this.hwndOwner = ownerHwnd
                 this.pidlRoot = null
