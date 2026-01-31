@@ -1,11 +1,11 @@
 package com.organize.photos.desktop
 
+import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
 import com.sun.jna.platform.win32.ShellAPI
 import com.sun.jna.platform.win32.WinDef
-import com.sun.jna.platform.WindowUtils
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
@@ -28,17 +28,20 @@ object WindowsFolderPicker {
         }
         
         return try {
-            val ownerHwnd = ownerWindow?.let { WindowUtils.getHWND(it) }
-            
-            val browseInfo = ShellAPI.BROWSEINFO().apply {
-                this.hwndOwner = ownerHwnd
-                this.pidlRoot = null
-                this.pszDisplayName = CharArray(260)
-                this.lpszTitle = WString(title)
-                this.ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
-                this.lpfn = null
-                this.lParam = 0L
+            // HWNDの取得方法を修正
+            val ownerHwnd = ownerWindow?.let { window ->
+                WinDef.HWND(Pointer.createConstant(Native.getComponentID(window)))
             }
+            
+            // BROWSEINFOの作成を修正（applyではなく通常の代入）
+            val browseInfo = ShellAPI.BROWSEINFO()
+            browseInfo.hwndOwner = ownerHwnd
+            browseInfo.pidlRoot = null
+            browseInfo.pszDisplayName = CharArray(260)
+            browseInfo.lpszTitle = WString(title)
+            browseInfo.ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
+            browseInfo.lpfn = null
+            // lParam は削除（存在しないフィールド）
 
             val pidl = Shell32.INSTANCE.SHBrowseForFolder(browseInfo)
 
@@ -53,7 +56,7 @@ object WindowsFolderPicker {
                 }
             }
         } catch (e: Exception) {
-            // フォールバック
+            e.printStackTrace()
             null
         }
     }
