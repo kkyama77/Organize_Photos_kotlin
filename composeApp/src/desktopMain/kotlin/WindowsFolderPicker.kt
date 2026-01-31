@@ -1,46 +1,18 @@
 package com.organize.photos.desktop
 
-import com.sun.jna.Native
 import com.sun.jna.Pointer
-import com.sun.jna.Structure
+import com.sun.jna.WString
+import com.sun.jna.platform.win32.Shell32
+import com.sun.jna.platform.win32.ShellAPI
 import com.sun.jna.platform.win32.WinDef
-import com.sun.jna.win32.StdCallLibrary
-import java.io.File
+import com.sun.jna.platform.win32.WinNT
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
  */
 object WindowsFolderPicker {
-    
-    interface Shell32 : StdCallLibrary {
-        fun SHBrowseForFolder(browseInfo: BROWSEINFO): Pointer
-        fun SHGetPathFromIDList(pidl: Pointer, pszPath: CharArray): Boolean
-    }
-    
-    @Structure.FieldOrder("hwndOwner", "pidlRoot", "pszDisplayName", "lpszTitle", "ulFlags", "lpfn", "lParam", "iImage")
-    class BROWSEINFO : Structure() {
-        @JvmField
-        var hwndOwner: Pointer? = null
-        @JvmField
-        var pidlRoot: Pointer? = null
-        @JvmField
-        var pszDisplayName: CharArray? = CharArray(260)
-        @JvmField
-        var lpszTitle: String? = null
-        @JvmField
-        var ulFlags: Int = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
-        @JvmField
-        var lpfn: Pointer? = null
-        @JvmField
-        var lParam: Pointer? = null
-        @JvmField
-        var iImage: Int = 0
-        
-        companion object {
-            private const val BIF_RETURNONLYFSDIRS = 0x0001  // ファイルシステムディレクトリのみ
-            private const val BIF_NEWDIALOGSTYLE = 0x0040      // 新しいダイアログスタイル
-        }
-    }
+    private const val BIF_RETURNONLYFSDIRS = 0x0001  // ファイルシステムディレクトリのみ
+    private const val BIF_NEWDIALOGSTYLE = 0x0040      // 新しいダイアログスタイル
     
     /**
      * Windows 標準フォルダ選択ダイアログを表示
@@ -48,26 +20,25 @@ object WindowsFolderPicker {
      * @param initialPath 初期パス
      * @return 選択されたパス、またはnull
      */
-    fun selectFolder(title: String, initialPath: String?): String? {
+    fun selectFolder(title: String, initialPath: String?, ownerHwnd: WinDef.HWND?): String? {
         return try {
-            val shell32 = Native.load("shell32", Shell32::class.java)
-            val browseInfo = BROWSEINFO().apply {
-                hwndOwner = null  // null = デスクトップをオーナーにする
+            val browseInfo = ShellAPI.BROWSEINFO().apply {
+                hwndOwner = ownerHwnd
                 pidlRoot = null
                 pszDisplayName = CharArray(260)
-                lpszTitle = title
-                ulFlags = 0x0001 or 0x0040  // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+                lpszTitle = WString(title)
+                ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
                 lpfn = null
                 lParam = null
             }
-            
-            val pidl = shell32.SHBrowseForFolder(browseInfo)
-            
+
+            val pidl = Shell32.INSTANCE.SHBrowseForFolder(browseInfo)
+
             if (pidl == null || pidl == Pointer.NULL) {
                 null  // ユーザーがキャンセルした
             } else {
                 val pszPath = CharArray(260)
-                if (shell32.SHGetPathFromIDList(pidl, pszPath)) {
+                if (Shell32.INSTANCE.SHGetPathFromIDList(pidl, pszPath)) {
                     pszPath.takeWhile { it != '\u0000' }.joinToString("")
                 } else {
                     null
