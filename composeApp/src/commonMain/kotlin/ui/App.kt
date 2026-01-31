@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -60,6 +61,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -326,7 +328,9 @@ fun PhotoGridScreen(
                                 },
                                 onShowProperties = { selectedPhotoForView = photo },
                                 onRename = { newFileName ->
-                                    photoScanner?.renamePhoto(photo, newFileName)
+                                    scope.launch {
+                                        photoScanner?.renamePhoto(photo, newFileName)
+                                    }
                                 }
                             )
                         }
@@ -505,6 +509,7 @@ private fun PhotoCard(
     val gradient = Brush.verticalGradient(
         colors = listOf(Color(0xFF1E88E5), Color(0xFF42A5F5))
     )
+    val scope = rememberCoroutineScope()
     var thumbBytes by remember { mutableStateOf(item.thumbnail) }
     var thumbBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -641,7 +646,9 @@ private fun PhotoCard(
                             Button(
                                 onClick = {
                                     showRenameDialog = false
-                                    onRename(newFileName)
+                                    scope.launch {
+                                        onRename(newFileName)
+                                    }
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
