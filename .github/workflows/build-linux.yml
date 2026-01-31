@@ -30,7 +30,11 @@ jobs:
       run: gradle tasks --all | grep -i package
     
     - name: Linuxバイナリのビルド (.deb)
-      run: gradle packageDeb --no-daemon --info
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 60
+        max_attempts: 3
+        command: gradle :composeApp:packageDeb --no-daemon --stacktrace
     
     - name: ビルド成果物の確認
       run: |
@@ -51,8 +55,8 @@ jobs:
         if-no-files-found: error
     
     - name:  AppImageのビルド (オプション)
-      run: gradle packageUberJarForCurrentOS --no-daemon
-      continue-on-error: true
+      run: gradle :composeApp:packageUberJarForCurrentOS --no-daemon --stacktrace
+      continue-on-error: false
     
     - name: UberJarのアップロード
       uses:  actions/upload-artifact@v4
