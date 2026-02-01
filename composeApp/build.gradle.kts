@@ -118,3 +118,10 @@ compose.desktop {
     }
 }
 
+// Linux ビルド時に Windows 専用ファイルを除外
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    if (System.getProperty("os.name").lowercase().contains("linux")) {
+        exclude("**/WindowsFolderPicker.kt")
+    }
+}
+

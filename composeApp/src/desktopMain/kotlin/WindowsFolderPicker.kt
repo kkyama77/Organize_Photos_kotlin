@@ -9,18 +9,12 @@ import com.sun.jna.platform.win32.WinDef.HWND
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
+ * Windows でのみ利用可能
  */
 object WindowsFolderPicker {
-    private const val BIF_RETURNONLYFSDIRS = 0x0001  // ファイルシステムディレクトリのみ
-    private const val BIF_NEWDIALOGSTYLE = 0x0040      // 新しいダイアログスタイル
+    private const val BIF_RETURNONLYFSDIRS = 0x0001
+    private const val BIF_NEWDIALOGSTYLE = 0x0040
     
-    /**
-     * Windows 標準フォルダ選択ダイアログを表示
-     * @param title ダイアログのタイトル
-     * @param initialPath 初期パス
-     * @param ownerWindow 親ウィンドウ
-     * @return 選択されたパス、またはnull
-     */
     fun selectFolder(title: String, initialPath: String?, ownerWindow: java.awt.Window?): String? {
         // Windows以外のプラットフォームでは何もしない
         if (!System.getProperty("os.name").lowercase().contains("win")) {
@@ -48,7 +42,7 @@ object WindowsFolderPicker {
             val pidl = Shell32.INSTANCE.SHBrowseForFolder(browseInfo)
 
             if (pidl == null || pidl == Pointer.NULL) {
-                null  // ユーザーがキャンセルした
+                null
             } else {
                 val pszPath = CharArray(260)
                 if (Shell32.INSTANCE.SHGetPathFromIDList(pidl, pszPath)) {
