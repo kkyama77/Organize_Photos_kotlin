@@ -37,21 +37,7 @@ private fun openFileWithDefaultApp(filePath: String) {
     }
 }
 
-private fun isWindows(): Boolean = System.getProperty("os.name").lowercase().contains("win")
-
 private fun pickDirectory(ownerWindow: java.awt.Window?): String? {
-    // Windows 標準ダイアログを使用（Windows判定あり）
-    if (isWindows()) {
-        val lastPath = FolderPathStore.getLastFolderPath()
-        val initialDir = if (lastPath != null && File(lastPath).exists()) lastPath else null
-        val selectedPath = WindowsFolderPicker.selectFolder("フォルダを選択", initialDir, ownerWindow)
-        if (selectedPath != null) {
-            FolderPathStore.saveFolderPath(selectedPath)
-        }
-        return selectedPath
-    }
-    
-    // Linux/macOS: JFileChooser を使用
     val chooser = JFileChooser().apply {
         fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
         isMultiSelectionEnabled = true // Allow multiple folder selection
@@ -61,7 +47,7 @@ private fun pickDirectory(ownerWindow: java.awt.Window?): String? {
             currentDirectory = File(lastPath)
         }
     }
-    val result = chooser.showOpenDialog(null)
+    val result = chooser.showOpenDialog(ownerWindow)
     return if (result == JFileChooser.APPROVE_OPTION) {
         val selected = chooser.selectedFiles
         if (selected.isNotEmpty()) {

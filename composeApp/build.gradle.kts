@@ -45,8 +45,6 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation("com.drewnoakes:metadata-extractor:2.18.0")
-                implementation("net.java.dev.jna:jna:5.14.0")
-                implementation("net.java.dev.jna:jna-platform:5.14.0")
             }
         }
     }
@@ -115,13 +113,6 @@ compose.desktop {
                 appCategory = "Graphics"
             }
         }
-    }
-}
-
-// Linux ビルド時に Windows 専用ファイルを除外
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    if (System.getProperty("os.name").lowercase().contains("linux")) {
-        exclude("**/WindowsFolderPicker.kt")
     }
 }
 
