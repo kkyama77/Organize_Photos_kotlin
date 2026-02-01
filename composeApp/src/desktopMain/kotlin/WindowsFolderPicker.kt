@@ -4,8 +4,8 @@ import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
-import com.sun.jna.platform.win32.ShellAPI
-import com.sun.jna.platform.win32.WinDef
+import com.sun.jna.platform.win32.ShellAPI.BROWSEINFO
+import com.sun.jna.platform.win32.WinDef.HWND
 
 /**
  * Windows 標準のフォルダ選択ダイアログを使用するクラス
@@ -28,20 +28,22 @@ object WindowsFolderPicker {
         }
         
         return try {
-            // HWNDの取得方法を修正
+            // HWNDの取得
             val ownerHwnd = ownerWindow?.let { window ->
-                WinDef.HWND(Pointer.createConstant(Native.getComponentID(window)))
+                HWND(Pointer.createConstant(Native.getComponentID(window)))
             }
             
-            // BROWSEINFOの作成を修正（applyではなく通常の代入）
-            val browseInfo = ShellAPI.BROWSEINFO()
-            browseInfo.hwndOwner = ownerHwnd
-            browseInfo.pidlRoot = null
-            browseInfo.pszDisplayName = CharArray(260)
-            browseInfo.lpszTitle = WString(title)
-            browseInfo.ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
-            browseInfo.lpfn = null
-            // lParam は削除（存在しないフィールド）
+            // BROWSEINFOの作成
+            val browseInfo = BROWSEINFO().apply {
+                hwndOwner = ownerHwnd
+                pidlRoot = null
+                pszDisplayName = CharArray(260)
+                lpszTitle = WString(title)
+                ulFlags = BIF_RETURNONLYFSDIRS or BIF_NEWDIALOGSTYLE
+                lpfn = null
+                lParam = Pointer.NULL
+                iImage = 0
+            }
 
             val pidl = Shell32.INSTANCE.SHBrowseForFolder(browseInfo)
 
