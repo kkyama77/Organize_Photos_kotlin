@@ -40,8 +40,9 @@ fun AndroidAppFrame(
     var folderSelectionTrigger by remember { mutableStateOf(0) }
     
     val folderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-        onResult = { uri: Uri? ->
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { result ->
+            val uri = result.data?.data
             if (uri != null) {
                 // パーミッション保持
                 context.contentResolver.takePersistableUriPermission(
@@ -59,7 +60,13 @@ fun AndroidAppFrame(
     )
     
     val openFolderPicker: () -> String? = {
-        folderPickerLauncher.launch(null)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            currentFolderUri?.let { putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, it) }
+        }
+        val chooser = Intent.createChooser(intent, "フォルダ管理アプリを選択")
+        folderPickerLauncher.launch(chooser)
         // Android は非同期なので null を返す（選択結果は onResult で処理）
         null
     }
