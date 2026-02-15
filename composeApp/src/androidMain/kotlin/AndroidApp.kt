@@ -140,28 +140,31 @@ fun AndroidAppFrame(
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            var handled = false
             val preferredPackage = AndroidOpenWithStore.getPreferredImageApp(context)
             if (!preferredPackage.isNullOrBlank()) {
                 intent.setPackage(preferredPackage)
                 if (intent.resolveActivity(packageManager) != null) {
                     runCatching { context.startActivity(intent) }
-                    return@openWithDefaultApp
+                    handled = true
                 }
             }
 
-            val candidates = packageManager.queryIntentActivities(intent, 0)
-                .mapNotNull { info ->
-                    val label = info.loadLabel(packageManager)?.toString()?.takeIf { it.isNotBlank() }
-                    label?.let { AppOption(info.activityInfo.packageName, it) }
-                }
-                .distinctBy { it.packageName }
+            if (!handled) {
+                val candidates = packageManager.queryIntentActivities(intent, 0)
+                    .mapNotNull { info ->
+                        val label = info.loadLabel(packageManager)?.toString()?.takeIf { it.isNotBlank() }
+                        label?.let { AppOption(info.activityInfo.packageName, it) }
+                    }
+                    .distinctBy { it.packageName }
 
-            if (candidates.isEmpty()) {
-                runCatching { context.startActivity(intent) }
-            } else {
-                openWithOptions = candidates
-                pendingOpenUri = uri
-                showOpenWithDialog = true
+                if (candidates.isEmpty()) {
+                    runCatching { context.startActivity(intent) }
+                } else {
+                    openWithOptions = candidates
+                    pendingOpenUri = uri
+                    showOpenWithDialog = true
+                }
             }
         }
     }
