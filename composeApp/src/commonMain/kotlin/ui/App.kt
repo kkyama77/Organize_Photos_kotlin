@@ -90,6 +90,7 @@ fun App(
     thumbnailGenerator: ThumbnailGenerator? = null,
     openWithDefaultApp: ((String) -> Unit)? = null,
     enableControlsCollapse: Boolean = false,
+    externalSelectedFolder: String? = null,
 ) {
     MaterialTheme {
         PhotoGridScreen(
@@ -98,7 +99,8 @@ fun App(
             initialItems,
             thumbnailGenerator,
             openWithDefaultApp,
-            enableControlsCollapse
+            enableControlsCollapse,
+            externalSelectedFolder
         )
     }
 }
@@ -112,6 +114,7 @@ fun PhotoGridScreen(
     thumbnailGenerator: ThumbnailGenerator?,
     openWithDefaultApp: ((String) -> Unit)?,
     enableControlsCollapse: Boolean,
+    externalSelectedFolder: String?,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var searchMode by rememberSaveable { mutableStateOf(SearchService.SearchMode.OR) }
@@ -142,6 +145,14 @@ fun PhotoGridScreen(
             result.onSuccess { photos = it }
                 .onFailure { error = it.message ?: "Scan failed" }
             isLoading = false
+        }
+    }
+
+    LaunchedEffect(externalSelectedFolder) {
+        val selected = externalSelectedFolder
+        if (!selected.isNullOrBlank() && selectedFolder != selected) {
+            selectedFolder = selected
+            triggerScan(selected)
         }
     }
 
@@ -191,11 +202,6 @@ fun PhotoGridScreen(
                                 if (!picked.isNullOrBlank()) {
                                     selectedFolder = picked
                                     triggerScan(picked)
-                                } else if (picked == null) {
-                                    // Android の場合: フォルダピッカーが非同期で開く
-                                    // ダミーパスでスキャンをトリガー（AndroidPhotoScanner は引数を無視）
-                                    selectedFolder = "android_storage"
-                                    triggerScan("android_storage")
                                 }
                             },
                             enabled = !isLoading,

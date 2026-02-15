@@ -3,6 +3,9 @@ package com.organize.photos.logic
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.ExifIFD0Directory
@@ -25,10 +28,16 @@ actual class PhotoScanner(
 ) {
     private val contentResolver: ContentResolver = context.contentResolver
 
+    private data class FolderFilter(
+        val relativePathPrefix: String,
+        val absolutePathPrefix: String?
+    )
+
     actual suspend fun scan(root: String, filters: ScanFilters): List<PhotoItem> = withContext(dispatcher) {
         val results = mutableListOf<PhotoItem>()
         
         val normalizedExt = filters.extensions.map { it.lowercase() }.toSet()
+        val folderFilter = resolveFolderFilter(root)
         
         // MediaStore.Images.Media.EXTERNAL_CONTENT_URI から画像を取得
         val projection = arrayOf(
@@ -41,8 +50,23 @@ actual class PhotoScanner(
             MediaStore.Images.Media.HEIGHT,
             MediaStore.Images.Media.SIZE
         )
-        
-        val selection = "${MediaStore.Images.Media.DATE_TAKEN} IS NOT NULL"
+
+        val selectionParts = mutableListOf<String>()
+        val selectionArgs = mutableListOf<String>()
+
+        if (folderFilter != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                selectionParts += "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
+                selectionArgs += "${folderFilter.relativePathPrefix}%"
+            } else if (!folderFilter.absolutePathPrefix.isNullOrBlank()) {
+                selectionParts += "${MediaStore.Images.Media.DATA} LIKE ?"
+                selectionArgs += "${folderFilter.absolutePathPrefix}%"
+            }
+        }
+
+        selectionParts += "${MediaStore.Images.Media.DATE_TAKEN} IS NOT NULL"
+        val selection = selectionParts.joinToString(" AND ")
+        val selectionArgsArray = if (selectionArgs.isEmpty()) null else selectionArgs.toTypedArray()
         val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
         
         runCatching {
@@ -50,7 +74,7 @@ actual class PhotoScanner(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 selection,
-                null,
+                selectionArgsArray,
                 sortOrder
             )?.use { cursor ->
                 val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -126,6 +150,31 @@ actual class PhotoScanner(
         }
         
         results
+    }
+
+    private fun resolveFolderFilter(root: String): FolderFilter? {
+        if (root.isBlank()) return null
+
+        val uri = runCatching { Uri.parse(root) }.getOrNull() ?: return null
+        if (uri.scheme != "content" || !DocumentsContract.isTreeUri(uri)) return null
+
+        val docId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: return null
+        val parts = docId.split(":", limit = 2)
+        if (parts.size != 2) return null
+
+        val volume = parts[0]
+        val rawPath = parts[1]
+        if (rawPath.isBlank()) return null
+
+        val relativePath = rawPath.trimEnd('/') + "/"
+        val absolutePath = if (volume == "primary") {
+            val base = Environment.getExternalStorageDirectory().absolutePath.trimEnd('/')
+            "$base/$relativePath"
+        } else {
+            null
+        }
+
+        return FolderFilter(relativePathPrefix = relativePath, absolutePathPrefix = absolutePath)
     }
     
     private fun extractExifMetadata(file: File): Map<String, String> {

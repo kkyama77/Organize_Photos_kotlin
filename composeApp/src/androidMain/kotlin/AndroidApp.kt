@@ -36,8 +36,9 @@ fun AndroidAppFrame(
 ) {
     // 現在選択されているフォルダ URI を State で管理
     var currentFolderUri by remember { mutableStateOf<Uri?>(AndroidFolderStore.getSavedFolderUri(context)) }
-    // フォルダ選択トリガー用の State
-    var folderSelectionTrigger by remember { mutableStateOf(0) }
+    var selectedFolderPath by remember {
+        mutableStateOf(AndroidFolderStore.getSavedFolderUri(context)?.toString())
+    }
     
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -52,8 +53,7 @@ fun AndroidAppFrame(
                 AndroidFolderStore.saveFolderUri(context, uri)
                 // State を更新して再描画
                 currentFolderUri = uri
-                // トリガーを更新してスキャンを開始
-                folderSelectionTrigger++
+                selectedFolderPath = uri.toString()
             }
         }
     )
@@ -84,13 +84,6 @@ fun AndroidAppFrame(
         onDispose { AndroidWritePermission.requestWrite = null }
     }
     
-    // フォルダ選択時に自動スキャンをトリガー
-    LaunchedEffect(folderSelectionTrigger) {
-        if (folderSelectionTrigger > 0 && currentFolderUri != null) {
-            // フォルダが選択されたことを App に通知（initialItems で渡すため再コンポーズ）
-        }
-    }
-    
     // 画像を外部アプリで開く
     val openWithDefaultApp: (String) -> Unit = { path ->
         val uri = resolveImageUri(context, path)
@@ -112,7 +105,8 @@ fun AndroidAppFrame(
         // 初期パスとして URI を渡す（Android では使用しないが、デスクトップ版との互換性のため）
         initialItems = emptyList(),
         openWithDefaultApp = openWithDefaultApp,
-        enableControlsCollapse = true
+        enableControlsCollapse = true,
+        externalSelectedFolder = selectedFolderPath
     )
 }
 
