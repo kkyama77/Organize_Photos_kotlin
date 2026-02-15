@@ -11,9 +11,13 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,10 +38,19 @@ fun AndroidAppFrame(
     photoScanner: PhotoScanner,
     thumbnailGenerator: ThumbnailGenerator
 ) {
+    val packageManager = context.packageManager
     // 現在選択されているフォルダ URI を State で管理
     var currentFolderUri by remember { mutableStateOf<Uri?>(AndroidFolderStore.getSavedFolderUri(context)) }
     // フォルダ選択トリガー用の State
     var folderSelectionTrigger by remember { mutableStateOf(0) }
+    var showFolderAppDialog by remember { mutableStateOf(false) }
+    var folderAppOptions by remember { mutableStateOf<List<AppOption>>(emptyList()) }
+    var pendingFolderIntent by remember { mutableStateOf<Intent?>(null) }
+
+    var showOpenWithDialog by remember { mutableStateOf(false) }
+    var openWithOptions by remember { mutableStateOf<List<AppOption>>(emptyList()) }
+    var pendingOpenUri by remember { mutableStateOf<Uri?>(null) }
+    var rememberOpenWith by remember { mutableStateOf(true) }
     
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -65,8 +78,29 @@ fun AndroidAppFrame(
             addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
             currentFolderUri?.let { putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, it) }
         }
-        val chooser = Intent.createChooser(intent, "フォルダ管理アプリを選択")
-        folderPickerLauncher.launch(chooser)
+        val candidates = packageManager.queryIntentActivities(intent, 0)
+            .mapNotNull { info ->
+                val label = info.loadLabel(packageManager)?.toString()?.takeIf { it.isNotBlank() }
+                label?.let { AppOption(info.activityInfo.packageName, it) }
+            }
+            .distinctBy { it.packageName }
+
+        when (candidates.size) {
+            0, 1 -> {
+                val launchIntent = if (candidates.size == 1) {
+                    intent.setPackage(candidates[0].packageName)
+                } else {
+                    intent
+                }
+                folderPickerLauncher.launch(launchIntent)
+            }
+            else -> {
+                folderAppOptions = candidates
+                pendingFolderIntent = intent
+                showFolderAppDialog = true
+            }
+        }
+
         // Android は非同期なので null を返す（選択結果は onResult で処理）
         null
     }
@@ -106,8 +140,111 @@ fun AndroidAppFrame(
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            runCatching { context.startActivity(intent) }
+            val preferredPackage = AndroidOpenWithStore.getPreferredImageApp(context)
+            if (!preferredPackage.isNullOrBlank()) {
+                intent.setPackage(preferredPackage)
+                if (intent.resolveActivity(packageManager) != null) {
+                    runCatching { context.startActivity(intent) }
+                    return@openWithDefaultApp
+                }
+            }
+
+            val candidates = packageManager.queryIntentActivities(intent, 0)
+                .mapNotNull { info ->
+                    val label = info.loadLabel(packageManager)?.toString()?.takeIf { it.isNotBlank() }
+                    label?.let { AppOption(info.activityInfo.packageName, it) }
+                }
+                .distinctBy { it.packageName }
+
+            if (candidates.isEmpty()) {
+                runCatching { context.startActivity(intent) }
+            } else {
+                openWithOptions = candidates
+                pendingOpenUri = uri
+                showOpenWithDialog = true
+            }
         }
+    }
+
+    if (showFolderAppDialog) {
+        AlertDialog(
+            onDismissRequest = { showFolderAppDialog = false },
+            title = { Text("フォルダ管理アプリを選択") },
+            text = {
+                Column {
+                    folderAppOptions.forEach { option ->
+                        Button(
+                            onClick = {
+                                val baseIntent = pendingFolderIntent
+                                showFolderAppDialog = false
+                                if (baseIntent != null) {
+                                    val launchIntent = baseIntent.setPackage(option.packageName)
+                                    folderPickerLauncher.launch(launchIntent)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(option.label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showFolderAppDialog = false }) {
+                    Text("キャンセル")
+                }
+            }
+        )
+    }
+
+    if (showOpenWithDialog) {
+        AlertDialog(
+            onDismissRequest = { showOpenWithDialog = false },
+            title = { Text("開くアプリを選択") },
+            text = {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = rememberOpenWith,
+                            onCheckedChange = { rememberOpenWith = it }
+                        )
+                        Text("次回からこのアプリを使う")
+                    }
+                    openWithOptions.forEach { option ->
+                        Button(
+                            onClick = {
+                                val uri = pendingOpenUri
+                                showOpenWithDialog = false
+                                if (uri != null) {
+                                    if (rememberOpenWith) {
+                                        AndroidOpenWithStore.savePreferredImageApp(context, option.packageName)
+                                    }
+                                    val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(uri, "image/*")
+                                        setPackage(option.packageName)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    runCatching { context.startActivity(openIntent) }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(option.label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showOpenWithDialog = false }) {
+                    Text("キャンセル")
+                }
+            }
+        )
     }
 
     // 常に App を表示
@@ -145,3 +282,5 @@ private fun resolveImageUri(context: Context, path: String): Uri? {
         }
     }.getOrNull()
 }
+
+private data class AppOption(val packageName: String, val label: String)
